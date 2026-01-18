@@ -5,6 +5,7 @@
 
 import { Container } from 'pixi.js'
 import { CONSTANTS } from './Constants.js'
+import { ParallaxBackground } from '../entities/ParallaxBackground.js'
 
 export class GameController {
   constructor(app, assetLoader) {
@@ -26,6 +27,7 @@ export class GameController {
     // Контейнеры
     this.gameContainer = null
     this.entityContainer = null
+    this.parallaxBackground = null
 
     // События
     this.events = new Map()
@@ -47,8 +49,32 @@ export class GameController {
     // Создание контейнеров
     this.createContainers()
 
+    // Инициализация фона
+    await this.initBackground()
+
     // Установка начального состояния
     this.setState(CONSTANTS.STATES.INTRO)
+    
+    // Слушаем изменения состояния для управления фоном
+    this.on('stateChange', ({ to: newState }) => {
+      if (this.parallaxBackground) {
+        if (newState === CONSTANTS.STATES.PAUSED || newState === CONSTANTS.STATES.INTRO) {
+          this.parallaxBackground.pause()
+        } else {
+          this.parallaxBackground.resume()
+        }
+      }
+    })
+  }
+
+  /**
+   * Инициализация фона
+   */
+  async initBackground() {
+    this.parallaxBackground = new ParallaxBackground(this.app, this.assetLoader)
+    this.parallaxBackground.zIndex = CONSTANTS.Z_INDEX.FAR_BACKGROUND
+    this.gameContainer.addChild(this.parallaxBackground)
+    await this.parallaxBackground.init()
   }
 
   /**
@@ -72,6 +98,13 @@ export class GameController {
    * @param {number} deltaMS - Время с последнего кадра в миллисекундах
    */
   update(deltaMS) {
+    // Всегда обновляем фон
+    if (this.parallaxBackground) {
+      // В INTRO фон движется медленно для визуального эффекта, в RUNNING - с полной скоростью
+      const speed = this.isRunning ? this.currentSpeed : CONSTANTS.SPEED.BASE * 0.3
+      this.parallaxBackground.update(deltaMS, speed)
+    }
+
     // Всегда обновляем игрока (если есть)
     // if (this.player) {
     //   this.player.update(deltaMS)

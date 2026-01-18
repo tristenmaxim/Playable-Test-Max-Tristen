@@ -26,7 +26,12 @@ export const CONSTANTS = {
 
   // Позиции (вычисляются динамически)
   POSITIONS: {
-    GROUND_Y: 0              // Будет вычисляться как window.innerHeight * 0.8
+    GROUND_Y: 0,              // Будет вычисляться динамически
+    // Референсные значения для расчета пропорций:
+    // В референсе: Me=1280, oe.GROUND_Y=280
+    // roadY = Me - oe.GROUND_Y = 1280 - 280 = 1000
+    REFERENCE_SCREEN_HEIGHT: 1280,  // Высота экрана в референсе
+    REFERENCE_GROUND_Y: 280         // GROUND_Y в референсе
   },
 
   // Z-Index слоёв
@@ -76,5 +81,14 @@ export const CONSTANTS = {
 
 // Вычисляемые константы
 export function initDynamicConstants() {
-  CONSTANTS.POSITIONS.GROUND_Y = window.innerHeight * 0.8
+  // В референсе используется фиксированное значение oe.GROUND_Y = 280
+  // Но для адаптации к разным размерам экрана используем пропорциональное вычисление
+  // Референс: Me=1280, oe.GROUND_Y=280 (это примерно 21.875% от высоты экрана)
+  // Но для правильного позиционирования используем фиксированное значение как базовое
+  const referenceHeight = CONSTANTS.POSITIONS.REFERENCE_SCREEN_HEIGHT
+  const referenceGroundY = CONSTANTS.POSITIONS.REFERENCE_GROUND_Y
+  const scale = window.innerHeight / referenceHeight
+  
+  // Масштабируем GROUND_Y пропорционально высоте экрана
+  CONSTANTS.POSITIONS.GROUND_Y = referenceGroundY * scale
 }

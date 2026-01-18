@@ -81,17 +81,9 @@
       try {
         const app = new App()
         await app.init()
-        
-        // Экспорт для проверки в консоли браузера
-        window.gameApp = app
-        window.gameController = app.gameController
-        
-        console.log('✅ Game initialized successfully')
-        
-        // Экспорт для отладки в консоли
-        console.log('💡 Доступно в консоли: window.gameApp, window.gameController')
+        console.log('Game initialized successfully')
       } catch (error) {
-        console.error('❌ Failed to initialize game:', error)
+        console.error('Failed to initialize game:', error)
         document.getElementById('preloader').innerHTML = 
           '<div class="preloader-content" style="color: #ff0000;">Ошибка загрузки игры</div>'
       }
