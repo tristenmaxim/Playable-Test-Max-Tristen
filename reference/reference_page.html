@@ -1,0 +1,2494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <title>runner | Playbox</title>
+  
+  <link rel="icon" type="image/png" sizes="32x32" href="https://app.plbx.ai/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="https://app.plbx.ai/favicon-16x16.png">
+  <link rel="apple-touch-icon" href="https://app.plbx.ai/apple-touch-icon.png">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+  <style>
+    
+    /* Reset */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      background: #121215;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    /* ========== PRELOADER ========== */
+    .preloader {
+      position: absolute;
+      inset: 0;
+      background: #121215;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      overflow: visible;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+    .preloader.hide {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .preloader-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      overflow: visible;
+    }
+    /* Logo container for bounce animation */
+    .preloader-logo {
+      position: relative;
+      width: 48px;
+      height: 48px;
+    }
+    /* Individual circles */
+    .bounce-circle {
+      position: absolute;
+      border-radius: 50%;
+      will-change: transform, box-shadow;
+      opacity: 0;
+    }
+    .bounce-circle.circle-1 {
+      background: linear-gradient(145deg, #FFE55C 0%, #FFC700 25%, #FF9500 50%, #FF6B00 75%, #E85D04 100%);
+    }
+    .bounce-circle.circle-2 {
+      background: linear-gradient(135deg, #C084FC 0%, #A855F7 25%, #8B5CF6 50%, #7C3AED 75%, #6D28D9 100%);
+    }
+    .bounce-circle.circle-3 {
+      background: linear-gradient(160deg, #00CFFF 0%, #00B4FF 25%, #0099FF 50%, #0085FF 75%, #3B82F6 100%);
+    }
+    .bounce-circle.circle-4 {
+      background: linear-gradient(140deg, #FFB347 0%, #FF8C94 25%, #FC56B8 50%, #D946EF 75%, #A855F7 100%);
+    }
+    .preloader-text {
+      font-size: 1rem;
+      font-weight: 600;
+      background: linear-gradient(135deg, #FF9500 0%, #FF6B9D 33%, #C850C0 66%, #6366F1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 0 transparent);
+      transition: filter 0.05s ease-out;
+    }
+    .preloader-vpn-hint {
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.4);
+      text-align: center;
+      max-width: 200px;
+      line-height: 1.4;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+    .preloader-vpn-hint.show {
+      opacity: 1;
+    }
+
+    /* ========== MOBILE LAYOUT ========== */
+    .mobile-container {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+    }
+    .mobile-container iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #000;
+    }
+
+    /* ========== DESKTOP LAYOUT ========== */
+    .phone-wrapper {
+      display: none;
+      height: 100%;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      padding-bottom: 6rem; /* Space for toolbar at bottom */
+    }
+
+    .phone-frame {
+      position: relative;
+      /* Width and height are set dynamically by JavaScript */
+      /* Default fallback values only used before JS initializes */
+      width: 375px;
+      height: 812px;
+      border: 12px solid #1a1a1a;
+      border-radius: 44px;
+      box-shadow:
+        0 0 0 2px #333,
+        0 25px 50px rgba(0, 0, 0, 0.5),
+        inset 0 0 0 2px rgba(255, 255, 255, 0.05);
+      overflow: hidden;
+      background: #000;
+    }
+
+    /* Dynamic Island / Notch - uses CSS custom properties set by JS */
+    .phone-frame {
+      --notch-width: 120px;
+      --notch-height: 32px;
+      --notch-radius: 20px;
+    }
+    .phone-frame::before {
+      content: '';
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: var(--notch-width);
+      height: var(--notch-height);
+      background: #1a1a1a;
+      border-radius: var(--notch-radius);
+      z-index: 110;
+    }
+
+    .phone-frame iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #000;
+    }
+
+    /* Hide scrollbars in iframe */
+    .phone-frame {
+      scrollbar-width: none; /* Firefox */
+    }
+    .phone-frame::-webkit-scrollbar {
+      display: none; /* Chrome, Safari */
+    }
+
+    /* Desktop shows phone mockup, mobile shows full-screen iframe
+       Use pointer: fine to detect actual desktop/laptop (mouse-based devices)
+       This prevents phone mockup from showing on mobile in landscape mode
+       where viewport width may exceed 768px */
+    @media (min-width: 768px) and (pointer: fine) {
+      .phone-wrapper { display: flex; }
+      .mobile-container { display: none; }
+    }
+
+    /* ========== TOOLBAR (Device selector + Orientation toggle + Mute) ========== */
+    .toolbar {
+      position: absolute;
+      bottom: 2.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      display: none;
+      align-items: center;
+      gap: 0.5rem;
+      z-index: 10000; /* High z-index to stay above store card modal */
+    }
+    @media (min-width: 768px) and (pointer: fine) {
+      .toolbar { display: flex; }
+    }
+
+    /* Common button/select styles */
+    .toolbar-btn, .device-select {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      backdrop-filter: blur(8px);
+      font-family: inherit;
+    }
+    .toolbar-btn:hover, .device-select:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: rgba(255, 255, 255, 0.9);
+    }
+    .toolbar-btn svg {
+      width: 18px;
+      height: 18px;
+      transition: transform 0.3s ease;
+    }
+    .toolbar-btn.landscape svg {
+      transform: rotate(90deg);
+    }
+
+    /* Icon-only button style */
+    .toolbar-btn.icon-only {
+      padding: 0.5rem;
+    }
+    .toolbar-btn.icon-only span {
+      display: none;
+    }
+
+    /* MRAID control buttons - hidden by default, shown when MRAID detected */
+    .toolbar-btn.mraid-control {
+      display: none;
+    }
+    .toolbar-btn.mraid-control.mraid-enabled {
+      display: flex;
+    }
+
+    /* Mute button icon swap */
+    .toolbar-btn .icon-muted {
+      display: none;
+    }
+    .toolbar-btn.muted .icon-unmuted {
+      display: none;
+    }
+    .toolbar-btn.muted .icon-muted {
+      display: block;
+    }
+
+    /* Viewable button icon swap */
+    .toolbar-btn .icon-hidden {
+      display: none;
+    }
+    .toolbar-btn.hidden .icon-viewable {
+      display: none;
+    }
+    .toolbar-btn.hidden .icon-hidden {
+      display: block;
+    }
+
+    /* ========== VIEWABLE LOCK OVERLAY (MRAID) ========== */
+    .viewable-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      z-index: 150;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+      backdrop-filter: blur(8px);
+      border-radius: 32px;
+    }
+    .viewable-overlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+    .viewable-overlay svg {
+      width: 64px;
+      height: 64px;
+      color: rgba(255, 255, 255, 0.5);
+    }
+    .viewable-overlay-text {
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 0.875rem;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    /* MRAID not supported toast */
+    .mraid-toast {
+      position: absolute;
+      top: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(-100px);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.625rem 1rem;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      border-radius: 8px;
+      color: rgba(165, 180, 252, 0.9);
+      font-size: 0.8125rem;
+      backdrop-filter: blur(8px);
+      opacity: 0;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+      z-index: 200;
+      white-space: nowrap;
+    }
+    .mraid-toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+    @media (min-width: 768px) and (pointer: fine) {
+      .mraid-toast { display: flex; }
+    }
+
+    /* Custom device selector dropdown (opens upward) */
+    .device-dropdown {
+      position: relative;
+      min-width: 180px;
+    }
+    .device-dropdown-trigger {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      backdrop-filter: blur(8px);
+      font-family: inherit;
+      width: 100%;
+    }
+    .device-dropdown-trigger:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: rgba(255, 255, 255, 0.9);
+    }
+    .device-dropdown-trigger svg {
+      width: 16px;
+      height: 16px;
+      transition: transform 0.2s ease;
+    }
+    .device-dropdown.open .device-dropdown-trigger svg {
+      transform: rotate(180deg);
+    }
+    .device-dropdown-menu {
+      position: absolute;
+      bottom: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      background: rgba(26, 26, 26, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      backdrop-filter: blur(12px);
+      max-height: 300px;
+      overflow-y: auto;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(8px);
+      transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+      z-index: 11000;
+    }
+    .device-dropdown.open .device-dropdown-menu {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+    .device-dropdown-group {
+      padding: 0.25rem 0;
+    }
+    .device-dropdown-group:not(:last-child) {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .device-dropdown-label {
+      padding: 0.375rem 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.4);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .device-dropdown-item {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.875rem;
+      color: rgba(255, 255, 255, 0.7);
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .device-dropdown-item:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.9);
+    }
+    .device-dropdown-item.selected {
+      background: rgba(99, 102, 241, 0.2);
+      color: #a5b4fc;
+    }
+    /* Scrollbar styling for dropdown */
+    .device-dropdown-menu::-webkit-scrollbar {
+      width: 6px;
+    }
+    .device-dropdown-menu::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .device-dropdown-menu::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+    }
+    .device-dropdown-menu::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Phone frame transition animation */
+    .phone-frame {
+      transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                  height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                  transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                  margin 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .phone-frame::before {
+      transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    /* Disable all transitions on initial load */
+    .phone-frame.no-transition,
+    .phone-frame.no-transition::before {
+      transition: none !important;
+    }
+
+    /* Landscape mode for phone frame */
+    .phone-frame.landscape::before {
+      /* Move notch to the side in landscape - swap width/height */
+      top: 50%;
+      left: 12px;
+      transform: translateY(-50%);
+      width: var(--notch-height);
+      height: var(--notch-width);
+    }
+
+    /* Hide notch for devices without it */
+    .phone-frame.no-notch::before {
+      display: none;
+    }
+
+    /* Tablet mode - different styling */
+    .phone-frame.tablet {
+      border-radius: 24px;
+      border-width: 10px;
+    }
+    .phone-frame.tablet::before {
+      display: none; /* Tablets don't have notch */
+    }
+
+    /* Common iframe styles */
+    iframe {
+      border: none;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Disable text selection globally */
+    * {
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    /* ========== ORIENTATION WARNING TOAST ========== */
+    .orientation-warning {
+      position: absolute;
+      top: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(-100px);
+      display: none;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.625rem 1rem;
+      background: rgba(234, 179, 8, 0.15);
+      border: 1px solid rgba(234, 179, 8, 0.3);
+      border-radius: 8px;
+      color: rgba(234, 179, 8, 0.9);
+      font-size: 0.8125rem;
+      backdrop-filter: blur(8px);
+      opacity: 0;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+      z-index: 200;
+      white-space: nowrap;
+    }
+    .orientation-warning.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+    .orientation-warning svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+    }
+    @media (min-width: 768px) and (pointer: fine) {
+      .orientation-warning { display: flex; }
+    }
+
+    /* ========== APP STORE CARD MODAL (Inside Phone Frame) ========== */
+    .store-card-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      z-index: 10000;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.25s ease, visibility 0.25s ease;
+      border-radius: 0;
+    }
+    .store-card-overlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+    .store-card {
+      position: relative;
+      background: #1c1c1e;
+      border-radius: 16px 16px 0 0;
+      padding: 16px 20px 24px;
+      width: 100%;
+      max-width: 100%;
+      box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.4);
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+    .store-card-overlay.show .store-card {
+      transform: translateY(0);
+    }
+    /* Drag handle indicator at top */
+    .store-card::before {
+      content: '';
+      position: absolute;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 36px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 2px;
+    }
+    .store-card-close {
+      position: absolute;
+      top: 20px;
+      right: 16px;
+      width: 28px;
+      height: 28px;
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      border-radius: 50%;
+      color: rgba(255, 255, 255, 0.6);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      line-height: 1;
+      transition: background 0.15s ease;
+    }
+    .store-card-close:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+    .store-card-header {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      margin-top: 8px;
+      padding-right: 36px;
+    }
+
+    .store-card-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 14px;
+      background: #2c2c2e;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    .store-card-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .store-card-title {
+      font-size: 17px;
+      font-weight: 600;
+      color: #fff;
+      margin: 0 0 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .store-card-developer {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.6);
+      margin: 0 0 6px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .store-card-rating {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .store-card-stars {
+      color: #ffcc00;
+      letter-spacing: -1px;
+      display: inline-flex;
+      align-items: center;
+    }
+    /* Half star styling - overlay approach for smooth horizontal fill */
+    .half-star {
+      position: relative;
+      display: inline-block;
+      width: 1em;
+      height: 1em;
+      line-height: 1;
+    }
+    .half-star-bg {
+      color: #ffcc00;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    .half-star-fill {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 50%;
+      overflow: hidden;
+      color: #ffcc00;
+    }
+
+    /* Connect with Playbox button - Playbox gradient style (primary action) */
+    .store-card-playbox {
+      display: block;
+      margin-top: 16px;
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #FF9500 0%, #FF6B9D 33%, #C850C0 66%, #6366F1 100%);
+      border: none;
+      border-radius: 20px;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s ease, transform 0.15s ease;
+      font-family: inherit;
+      text-decoration: none;
+      text-align: center;
+    }
+    .store-card-playbox:hover {
+      opacity: 0.9;
+      transform: scale(1.02);
+    }
+    /* Container for Playbox button */
+    .store-card-playbox-wrapper {
+      width: 100%;
+    }
+
+    /* GET button - secondary action */
+    .store-card-get {
+      display: block;
+      margin: 10px auto 0;
+      width: 60%;
+      padding: 10px;
+      background: #0a84ff;
+      border: none;
+      border-radius: 18px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      font-family: inherit;
+    }
+    .store-card-get:hover {
+      background: #0070e0;
+    }
+
+    .store-card-store-badge {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 12px;
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.4);
+    }
+    .store-card-store-badge svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* Loading state */
+    .store-card-icon.loading {
+      background: linear-gradient(90deg, #2c2c2e 25%, #3c3c3e 50%, #2c2c2e 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      /* Use color: transparent to hide alt text/broken image icon */
+      color: transparent;
+    }
+    /* Hide the actual image content while loading */
+    img.store-card-icon.loading {
+      /* Make the image content invisible but keep the element visible for shimmer */
+      object-position: -9999px -9999px;
+    }
+    /* Fade in when loaded */
+    .store-card-icon {
+      transition: object-position 0s, opacity 0.2s ease;
+    }
+    img.store-card-icon:not(.loading) {
+      object-position: center center;
+      opacity: 1;
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* Orientation lock styles */
+    
+    /* Portrait orientation lock - mobile hints only */
+    @media (orientation: landscape) and (max-width: 767px) {
+      .mobile-container::after {
+        content: 'Rotate device for best experience';
+        position: fixed;
+        bottom: 1rem;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 0.5rem 1rem;
+        background: rgba(0,0,0,0.8);
+        color: white;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        z-index: 1000;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Mobile: full-screen container with preloader -->
+  <div class="mobile-container">
+    <div id="preloader-mobile" class="preloader">
+      <div class="preloader-content">
+        <div class="preloader-logo">
+        <div class="bounce-circle circle-1"></div>
+        <div class="bounce-circle circle-2"></div>
+        <div class="bounce-circle circle-3"></div>
+        <div class="bounce-circle circle-4"></div>
+      </div>
+        <span class="preloader-text">Playbox AI</span>
+        <span class="preloader-vpn-hint">If playable loads too long, try using VPN</span>
+      </div>
+    </div>
+    <iframe
+      id="playable-mobile"
+      sandbox="allow-scripts allow-same-origin allow-pointer-lock"
+      allow="autoplay; fullscreen"
+      scrolling="no"
+      style="overflow: hidden;"
+    ></iframe>
+  </div>
+
+  <!-- Desktop: phone mockup with preloader inside -->
+  <div class="phone-wrapper">
+    <!-- Orientation warning toast -->
+    <div id="orientation-warning" class="orientation-warning">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      <span id="warning-text">Optimized for portrait</span>
+    </div>
+    <!-- MRAID info toast -->
+    <div id="mraid-toast" class="mraid-toast">
+      <span id="mraid-toast-text">MRAID not supported</span>
+    </div>
+    <div id="phone-frame" class="phone-frame">
+      <div id="preloader-desktop" class="preloader">
+        <div class="preloader-content">
+          <div class="preloader-logo">
+        <div class="bounce-circle circle-1"></div>
+        <div class="bounce-circle circle-2"></div>
+        <div class="bounce-circle circle-3"></div>
+        <div class="bounce-circle circle-4"></div>
+      </div>
+          <span class="preloader-text">Playbox AI</span>
+          <span class="preloader-vpn-hint">If playable loads too long, try using VPN</span>
+        </div>
+      </div>
+      <iframe
+        id="playable-desktop"
+        sandbox="allow-scripts allow-same-origin allow-pointer-lock"
+        allow="autoplay; fullscreen"
+        scrolling="no"
+        style="overflow: hidden;"
+      ></iframe>
+      <!-- Viewable Lock Overlay (MRAID) -->
+      <div id="viewable-overlay" class="viewable-overlay">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        <div class="viewable-overlay-text">Ad paused<br>Toggle visibility to resume</div>
+      </div>
+      
+      <!-- App Store Card Modal (Desktop - inside phone frame) -->
+      <div id="store-card-overlay" class="store-card-overlay">
+        <div class="store-card">
+          <button id="store-card-close" class="store-card-close" aria-label="Close">×</button>
+          <div class="store-card-header">
+            <img id="store-card-icon" class="store-card-icon loading" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="" crossorigin="anonymous" referrerpolicy="no-referrer">
+            <div class="store-card-info">
+              <h3 id="store-card-title" class="store-card-title">Loading...</h3>
+              <p id="store-card-developer" class="store-card-developer"></p>
+              <div class="store-card-rating">
+                <span id="store-card-stars" class="store-card-stars"></span>
+                <span id="store-card-rating-count"></span>
+              </div>
+            </div>
+          </div>
+          <div class="store-card-playbox-wrapper">
+            <a id="store-card-playbox" class="store-card-playbox" href="https://plbx.ai" target="_blank" rel="noopener noreferrer">Connect with Playbox</a>
+          </div>
+          <button id="store-card-get" class="store-card-get">GET</button>
+          <div id="store-card-badge" class="store-card-store-badge"></div>
+        </div>
+      </div>
+    </div>
+    <!-- Toolbar: Device selector + Orientation toggle -->
+    <div class="toolbar">
+      <!-- Custom dropdown that opens upward -->
+      <div id="device-dropdown" class="device-dropdown">
+        <button id="device-dropdown-trigger" class="device-dropdown-trigger" title="Select device mockup">
+          <span id="device-dropdown-label">iPhone 16 Pro</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 15l-6-6-6 6"/>
+          </svg>
+        </button>
+        <div class="device-dropdown-menu">
+          <div class="device-dropdown-group">
+            <div class="device-dropdown-label">Phones</div>
+            <div class="device-dropdown-item" data-value="iphone-16-pro-max">iPhone 16 Pro Max</div>
+            <div class="device-dropdown-item selected" data-value="iphone-16-pro">iPhone 16 Pro</div>
+            <div class="device-dropdown-item" data-value="iphone-se">iPhone SE</div>
+            <div class="device-dropdown-item" data-value="pixel-7-pro">Google Pixel 7 Pro</div>
+            <div class="device-dropdown-item" data-value="galaxy-s23-ultra">Samsung Galaxy S23 Ultra</div>
+            <div class="device-dropdown-item" data-value="generic-android">Generic Android</div>
+          </div>
+          <div class="device-dropdown-group">
+            <div class="device-dropdown-label">Tablets</div>
+            <div class="device-dropdown-item" data-value="ipad-pro-12">iPad Pro 12.9"</div>
+            <div class="device-dropdown-item" data-value="ipad-air">iPad Air</div>
+            <div class="device-dropdown-item" data-value="galaxy-tab-s8">Samsung Galaxy Tab S8</div>
+            <div class="device-dropdown-item" data-value="generic-tablet">Generic Tablet</div>
+          </div>
+        </div>
+      </div>
+      <button id="orientation-toggle" class="toolbar-btn" title="Toggle orientation">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="2" width="16" height="20" rx="2" ry="2"/>
+          <line x1="12" y1="18" x2="12" y2="18"/>
+        </svg>
+        <span id="orientation-label">Landscape</span>
+      </button>
+      <!-- MRAID Controls: Viewable toggle and Mute -->
+      <button id="viewable-toggle" class="toolbar-btn icon-only mraid-control" title="Toggle viewable (MRAID)">
+        <svg class="icon-viewable" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+        <svg class="icon-hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+          <line x1="1" y1="1" x2="23" y2="23"/>
+        </svg>
+      </button>
+      <button id="mute-toggle" class="toolbar-btn icon-only mraid-control" title="Toggle sound (MRAID)">
+        <svg class="icon-unmuted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+        </svg>
+        <svg class="icon-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <line x1="23" y1="9" x2="17" y2="15"/>
+          <line x1="17" y1="9" x2="23" y2="15"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      'use strict';
+
+      // ========== CORE ELEMENTS ==========
+      var preloaderMobile = document.getElementById('preloader-mobile');
+      var preloaderDesktop = document.getElementById('preloader-desktop');
+      var mobileIframe = document.getElementById('playable-mobile');
+      var desktopIframe = document.getElementById('playable-desktop');
+      var playableUrl = '/playoff/runner/_raw';
+      var preloaderHidden = false;
+
+      // ========== BOUNCE ANIMATION ==========
+      
+    // ========== BOUNCE ANIMATION CONFIG ==========
+    var bounceConfig = {
+      dropHeight: 280,
+      groundOffset: 25,
+      gravity: 0.9,
+      bounceDecay: 0.85,
+      bounceCount: 4,
+      fallDuration: 0.6,
+      staggerDelay: 0.15,
+      glowDuration: 0.15,
+      fadeInDuration: 0.1,
+      enableGlow: true,
+      enableSquash: true,
+      squashAmount: 0.1
+    };
+
+    var circleConfigs = [
+      { className: 'circle-1', cx: 38.4715, cy: 13.1684, glow: 'orange' },
+      { className: 'circle-2', cx: 51.3617, cy: 38.4714, glow: 'purple' },
+      { className: 'circle-3', cx: 26.0587, cy: 51.3617, glow: 'blue' },
+      { className: 'circle-4', cx: 13.1684, cy: 26.0587, glow: 'pink' }
+    ];
+
+    var logoSize = 48;
+    var circleRadius = 12.8902;
+    var bounceScale = logoSize / 65;
+    var circleSize = circleRadius * 2 * bounceScale;
+    var absoluteGroundY = logoSize;
+
+    // Initialize circle sizes and positions within a specific preloader
+    function initBounceCircles(preloaderEl) {
+      circleConfigs.forEach(function(conf) {
+        var el = preloaderEl.querySelector('.bounce-circle.' + conf.className);
+        if (!el) return;
+        el.style.width = circleSize + 'px';
+        el.style.height = circleSize + 'px';
+        var left = conf.cx * bounceScale - circleSize / 2;
+        var top = conf.cy * bounceScale - circleSize / 2;
+        el.style.left = left + 'px';
+        el.style.top = top + 'px';
+      });
+    }
+
+    // Get glow box-shadow value
+    function getGlowValue(glowColor, intensity) {
+      intensity = intensity || 1;
+      var colors = {
+        'orange': 'rgba(255, 149, 0, ' + (0.8 * intensity) + ')',
+        'purple': 'rgba(139, 92, 246, ' + (0.8 * intensity) + ')',
+        'blue': 'rgba(0, 133, 255, ' + (0.8 * intensity) + ')',
+        'pink': 'rgba(252, 86, 184, ' + (0.8 * intensity) + ')'
+      };
+      var size = Math.round(30 * intensity);
+      var spread = Math.round(10 * intensity);
+      return '0 0 ' + size + 'px ' + spread + 'px ' + colors[glowColor];
+    }
+
+    // Fire text glow effect
+    function fireTextGlow(preloaderEl, atTime, glowColor, intensity) {
+      if (!bounceConfig.enableGlow) return;
+      var textEl = preloaderEl.querySelector('.preloader-text');
+      if (!textEl) return;
+      intensity = intensity || 1;
+
+      var colors = {
+        'orange': 'rgba(255, 149, 0, ',
+        'purple': 'rgba(139, 92, 246, ',
+        'blue': 'rgba(0, 133, 255, ',
+        'pink': 'rgba(252, 86, 184, '
+      };
+
+      var color = colors[glowColor] || 'rgba(255, 255, 255, ';
+      var glowSize = Math.round(15 * intensity);
+
+      gsap.timeline({ delay: atTime })
+        .to(textEl, {
+          filter: 'drop-shadow(0 0 ' + glowSize + 'px ' + color + (0.8 * intensity) + '))',
+          duration: bounceConfig.glowDuration / 2,
+          ease: 'power2.out'
+        })
+        .to(textEl, {
+          filter: 'drop-shadow(0 0 0 transparent)',
+          duration: bounceConfig.glowDuration / 2,
+          ease: 'power2.in'
+        });
+    }
+
+    // Fire text shake effect
+    function fireTextShake(preloaderEl, atTime, intensity) {
+      var textEl = preloaderEl.querySelector('.preloader-text');
+      if (!textEl) return;
+      intensity = intensity || 1;
+      var shakeDistance = 3 * intensity;
+
+      gsap.timeline({ delay: atTime })
+        .to(textEl, {
+          y: shakeDistance,
+          duration: 0.05,
+          ease: 'power2.out'
+        })
+        .to(textEl, {
+          y: 0,
+          duration: 0.15,
+          ease: 'elastic.out(1, 0.5)'
+        });
+    }
+
+    // Create bounce animation for a single circle
+    function createCircleBounce(preloaderEl, circleIndex, delay) {
+      var conf = circleConfigs[circleIndex];
+      var el = preloaderEl.querySelector('.bounce-circle.' + conf.className);
+      if (!el) return gsap.timeline();
+
+      var glowColor = conf.glow;
+      var tl = gsap.timeline({ delay: delay });
+
+      var dropHeight = bounceConfig.dropHeight;
+      var fallDuration = bounceConfig.fallDuration;
+      var bounceDecay = bounceConfig.bounceDecay;
+      var bounceCount = bounceConfig.bounceCount;
+      var gravity = bounceConfig.gravity;
+
+      var finalTop = conf.cy * bounceScale - circleSize / 2;
+      var groundLevel = absoluteGroundY - finalTop - circleSize + bounceConfig.groundOffset;
+      var startY = groundLevel - dropHeight;
+
+      gsap.set(el, {
+        y: startY,
+        opacity: 0,
+        scaleX: 1,
+        scaleY: 1,
+        boxShadow: 'none',
+        force3D: true  // GPU acceleration
+      });
+
+      var currentTime = 0;
+
+      // Fade in
+      tl.to(el, { opacity: 1, duration: bounceConfig.fadeInDuration });
+      currentTime += bounceConfig.fadeInDuration;
+
+      // Glow effect (parallel)
+      function fireGlow(atTime, intensity) {
+        if (!bounceConfig.enableGlow) return;
+        intensity = intensity || 1;
+
+        gsap.timeline({ delay: delay + atTime })
+          .to(el, {
+            boxShadow: getGlowValue(glowColor, intensity),
+            duration: bounceConfig.glowDuration / 2,
+            ease: 'power2.out'
+          })
+          .to(el, {
+            boxShadow: 'none',
+            duration: bounceConfig.glowDuration / 2,
+            ease: 'power2.in'
+          });
+      }
+
+      // Squash effect (parallel)
+      function fireSquash(atTime, intensity) {
+        if (!bounceConfig.enableSquash) return;
+        intensity = intensity || 1;
+        var squash = bounceConfig.squashAmount * intensity;
+
+        gsap.timeline({ delay: delay + atTime })
+          .to(el, {
+            scaleX: 1 + squash,
+            scaleY: 1 - squash,
+            duration: 0.04,
+            ease: 'power2.out'
+          })
+          .to(el, {
+            scaleX: 1,
+            scaleY: 1,
+            duration: 0.08,
+            ease: 'elastic.out(1, 0.5)'
+          });
+      }
+
+      // Initial fall
+      var initialFallDuration = fallDuration / gravity;
+      tl.to(el, {
+        y: groundLevel,
+        duration: initialFallDuration,
+        ease: 'power2.in'
+      });
+      currentTime += initialFallDuration;
+
+      // Impact effects
+      fireGlow(currentTime - 0.02, 1);
+      fireSquash(currentTime - 0.02, 1);
+      fireTextGlow(preloaderEl, delay + currentTime - 0.02, glowColor, 1);
+      fireTextShake(preloaderEl, delay + currentTime - 0.02, 1);
+
+      // Bounces
+      var currentHeight = dropHeight;
+      for (var i = 0; i < bounceCount; i++) {
+        currentHeight *= bounceDecay;
+        var bounceDuration = (fallDuration / gravity) * Math.sqrt(currentHeight / dropHeight);
+
+        // Up
+        tl.to(el, {
+          y: groundLevel - currentHeight,
+          duration: bounceDuration,
+          ease: 'power2.out'
+        });
+        currentTime += bounceDuration;
+
+        // Down
+        tl.to(el, {
+          y: groundLevel,
+          duration: bounceDuration,
+          ease: 'power2.in'
+        });
+        currentTime += bounceDuration;
+
+        // Impact effects (decreasing intensity)
+        var intensity = currentHeight / dropHeight;
+        if (intensity > 0.15) {
+          fireGlow(currentTime - 0.02, intensity);
+          fireSquash(currentTime - 0.02, intensity);
+          fireTextGlow(preloaderEl, delay + currentTime - 0.02, glowColor, intensity);
+          fireTextShake(preloaderEl, delay + currentTime - 0.02, intensity);
+        }
+      }
+
+      // Settle to final position
+      tl.to(el, {
+        y: 0,
+        duration: 0.3,
+        ease: 'power2.out'
+      });
+
+      return tl;
+    }
+
+    // Play bounce animation for all circles
+    function playBounceAnimation(preloaderEl) {
+      if (typeof gsap === 'undefined') {
+        console.warn('[Playbox] GSAP not loaded, skipping bounce animation');
+        // Fallback: just show circles
+        circleConfigs.forEach(function(conf) {
+          var el = preloaderEl.querySelector('.bounce-circle.' + conf.className);
+          if (el) {
+            el.style.opacity = '1';
+          }
+        });
+        return;
+      }
+
+      var timeline = gsap.timeline();
+
+      circleConfigs.forEach(function(conf, index) {
+        var circleTl = createCircleBounce(preloaderEl, index, index * bounceConfig.staggerDelay);
+        timeline.add(circleTl, 0);
+      });
+
+      return timeline;
+    }
+
+    // Initialize and start animation
+    function startPreloaderAnimation(preloaderEl) {
+      initBounceCircles(preloaderEl);
+      setTimeout(function() {
+        playBounceAnimation(preloaderEl);
+      }, 100);
+    }
+  
+
+      // Start preloader animations for both preloaders
+      if (preloaderMobile) {
+        startPreloaderAnimation(preloaderMobile);
+      }
+      if (preloaderDesktop) {
+        startPreloaderAnimation(preloaderDesktop);
+      }
+
+      // Show VPN hint after 5 seconds if still loading
+      setTimeout(function() {
+        var hints = document.querySelectorAll('.preloader-vpn-hint');
+        for (var i = 0; i < hints.length; i++) {
+          hints[i].classList.add('show');
+        }
+      }, 5000);
+
+      // ========== MRAID MOCK INJECTION (via DOM API, not string manipulation) ==========
+      function injectMraidMock(iframe) {
+        try {
+          var iframeWin = iframe.contentWindow;
+          var iframeDoc = iframe.contentDocument || iframeWin.document;
+
+          if (!iframeWin || !iframeDoc) {
+            console.log('[Playbox] Cannot inject MRAID - cross-origin iframe');
+            return false;
+          }
+
+          // Check if MRAID already exists (loaded externally via mraid.js)
+          if (iframeWin.mraid) {
+            console.log('[Playbox] MRAID already defined, skipping injection');
+            iframe.dataset.mraidEnabled = 'true';  // Still mark as enabled for controls!
+            return true;
+          }
+
+          // Create and inject MRAID mock script
+          var script = iframeDoc.createElement('script');
+          script.textContent = getMraidMockCode();
+          iframeDoc.head.appendChild(script);
+
+          iframe.dataset.mraidEnabled = 'true';
+          console.log('[Playbox] MRAID mock injected via DOM');
+          return true;
+        } catch (e) {
+          console.warn('[Playbox] Failed to inject MRAID:', e);
+          return false;
+        }
+      }
+
+      // Universal Ad SDK mock code as a function (avoids escaping issues)
+      // Reports to parent which MRAID events are subscribed (for showing/hiding controls)
+      // Supports: MRAID 2.0/3.0, DAPI (IronSource), Google Exit, Facebook, TikTok, super_html, Mintegral
+      function getMraidMockCode() {
+        return '(function(){' +
+          'try{' +
+          'var state="loading",viewable=true,volume=100,listeners={},reported={};' +
+          'var storeUrls={google:"",apple:""};' +  // For super_html
+          // Safe event firing with error isolation per listener
+          'function fire(n,d){' +
+            'var a=listeners[n]||[];' +
+            'for(var i=0;i<a.length;i++){try{a[i](d)}catch(e){console.warn("[Playbox] Listener error:",e)}}' +
+          '}' +
+          // Report subscribed events to parent (for showing controls)
+          'function reportEvent(n){' +
+            'if(!reported[n]){' +
+              'reported[n]=true;' +
+              'try{window.parent.postMessage({type:"mraid-event-subscribed",event:n},"*")}catch(e){}' +
+            '}' +
+          '}' +
+          // Safe size getter with fallback
+          'function getSize(){' +
+            'try{return{width:window.innerWidth||320,height:window.innerHeight||480}}' +
+            'catch(e){return{width:320,height:480}}' +
+          '}' +
+          // Universal CTA handler - supports both iframe mode (postMessage) and direct access (/_redirect page)
+          'function handleCTA(u){' +
+            'console.log("[Playbox SDK] CTA triggered:",u||"(no url)");' +
+            'if(window.self===window.top){' +
+              'window.location.href="/_redirect?url="+encodeURIComponent(u||"");' +
+              'return' +
+            '}' +
+            'try{window.parent.postMessage({type:"CTA_CLICK",url:u||""},"*")}catch(e){}' +
+          '}' +
+          // MRAID mock (2.0 + 3.0)
+          'window.mraid={' +
+            'getVersion:function(){return"3.0"},' +
+            'getState:function(){return state},' +
+            'isViewable:function(){return viewable},' +
+            'getAudioVolumePercentage:function(){return volume},' +
+            'getAudioVolume:function(){return volume},' +
+            'getMaxSize:function(){return getSize()},' +
+            'getScreenSize:function(){return getSize()},' +
+            'getCurrentPosition:function(){var s=getSize();return{x:0,y:0,width:s.width,height:s.height}},' +
+            'getDefaultPosition:function(){var s=getSize();return{x:0,y:0,width:s.width,height:s.height}},' +
+            'getPlacementType:function(){return"interstitial"},' +
+            'supports:function(f){return f==="sms"||f==="tel"||f==="storePicture"||f==="inlineVideo"},' +
+            'addEventListener:function(n,cb){' +
+              'if(typeof cb!=="function")return;' +
+              'listeners[n]=listeners[n]||[];' +
+              'if(listeners[n].indexOf(cb)===-1)listeners[n].push(cb);' +
+              'if(n==="audioVolumeChange"||n==="viewableChange"){reportEvent(n)}' +
+              'if(n==="ready"&&state!=="loading"){setTimeout(function(){try{cb()}catch(e){}},0)}' +
+            '},' +
+            'removeEventListener:function(n,cb){' +
+              'if(!listeners[n])return;' +
+              'if(!cb){listeners[n]=[];return}' +
+              'listeners[n]=listeners[n].filter(function(f){return f!==cb})' +
+            '},' +
+            'open:function(u){handleCTA(u)},' +
+            'openStoreUrl:function(u){handleCTA(u)},' +  // IronSource specific
+            'close:function(){},' +
+            'useCustomClose:function(){},' +
+            'setOrientationProperties:function(){},' +
+            'expand:function(){},' +
+            'playVideo:function(u){try{window.open(u)}catch(e){}}' +
+          '};' +
+          // DAPI mock (IronSource/Unity Ads)
+          'window.dapi={' +
+            'isReady:function(){return state!=="loading"},' +
+            'getAudioVolume:function(){return volume},' +
+            'getScreenSize:function(){return getSize()},' +
+            'addEventListener:function(n,cb){window.mraid.addEventListener(n,cb)},' +
+            'removeEventListener:function(n,cb){window.mraid.removeEventListener(n,cb)},' +
+            'openStoreUrl:function(u){handleCTA(u)}' +
+          '};' +
+          // Facebook/Meta Playable Ads (also Moloco)
+          'window.FbPlayableAd={onCTAClick:function(){handleCTA("")}};' +
+          // Google Ads Exit API
+          'window.ExitApi={exit:function(){handleCTA("")}};' +
+          // TikTok/Pangle
+          'window.TikTokApi={openAppStore:function(){handleCTA("")}};' +
+          'window.openAppStore=function(){handleCTA("")};' +  // TikTok global function
+          // Cocos Creator super_html
+          'window.super_html={' +
+            'download:function(){var u=/Android/i.test(navigator.userAgent)?storeUrls.google:storeUrls.apple;handleCTA(u)},' +
+            'game_end:function(){console.log("[Playbox SDK] super_html.game_end()")},' +
+            'is_audio:function(){return volume>0},' +
+            'is_hide_download:function(){return false},' +
+            'set_google_play_url:function(u){storeUrls.google=u},' +
+            'set_app_store_url:function(u){storeUrls.apple=u}' +
+          '};' +
+          // Mintegral/Vungle
+          'window.gameEnd=function(){console.log("[Playbox SDK] gameEnd()")};' +
+          'window.window_gameEnd=function(){console.log("[Playbox SDK] window_gameEnd()")};' +
+          'window.gameReady=function(){console.log("[Playbox SDK] gameReady()")};' +
+          'window.gameClose=function(){handleCTA("")};' +  // Mintegral CTA
+          // Event listeners for Playbox controls
+          'window.addEventListener("playable-audio-mute",function(e){try{var m=!!(e.detail&&e.detail.muted);volume=m?0:100;fire("audioVolumeChange",volume)}catch(err){console.warn("[Playbox] Audio mute error:",err)}});' +
+          'window.addEventListener("playable-screen-lock",function(e){try{var l=!!(e.detail&&e.detail.locked);viewable=!l;fire("viewableChange",viewable)}catch(err){console.warn("[Playbox] Screen lock error:",err)}});' +
+          // Initialize after small delay
+          'setTimeout(function(){try{state="default";fire("ready");fire("viewableChange",true);window.parent.postMessage({type:"mraid-ready"},"*")}catch(e){console.warn("[Playbox] Init error:",e)}},50);' +
+          '}catch(globalErr){console.error("[Playbox] MRAID mock init failed:",globalErr)}' +
+        '})()';
+      }
+
+      
+    // ========== PLAYABLE ANALYZER ==========
+    // Analyzes playable HTML to detect SDK usage
+    function analyzePlayableHtml(html) {
+      var result = {
+        usesMraid: /\b(mraid|dapi|super_html)\b/i.test(html),
+        supportsAudioControl: /audioVolumeChange|getAudioVolume|is_audio/i.test(html),
+        supportsViewable: /viewableChange|isViewable/i.test(html),
+        detectedSdks: [],
+        fallbackStoreUrls: { apple: '', google: '' }
+      };
+
+      // Detect specific SDKs
+      if (/\bmraid\b/i.test(html)) result.detectedSdks.push('MRAID');
+      if (/\bdapi\b/i.test(html)) result.detectedSdks.push('DAPI');
+      if (/ExitApi/i.test(html)) result.detectedSdks.push('Google Exit');
+      if (/FbPlayableAd/i.test(html)) result.detectedSdks.push('Facebook');
+      if (/TikTokApi|openAppStore/i.test(html)) result.detectedSdks.push('TikTok');
+      if (/mintegral|gameClose|gameEnd/i.test(html)) result.detectedSdks.push('Mintegral');
+      if (/super_html/i.test(html)) result.detectedSdks.push('super_html');
+
+      // Extract store URLs from HTML (including comments) as fallback
+      // App Store URL pattern
+      var appleMatch = html.match(/https:\/\/apps\.apple\.com\/[a-z]{2}\/app\/[^\/]+\/id\d+/i);
+      if (appleMatch) {
+        result.fallbackStoreUrls.apple = appleMatch[0];
+      }
+
+      // Play Store URL pattern
+      var googleMatch = html.match(/https:\/\/play\.google\.com\/store\/apps\/details\?id=[a-zA-Z][a-zA-Z0-9_.]+/i);
+      if (googleMatch) {
+        result.fallbackStoreUrls.google = googleMatch[0];
+      }
+
+      return result;
+    }
+  
+
+      // ========== WEB WORKER LOADER ==========
+      // Offloads fetch, analysis, and blob creation to separate thread
+      
+    // Detect mobile/tablet devices - blob: URLs for iframes have issues in WebViews
+    // iOS WKWebView and Android WebView (used by Telegram, Instagram, Facebook, etc.)
+    // often don't properly support blob: iframe src. Use Worker+blob only on desktop.
+    var isMobileOrTablet = (function() {
+      var ua = navigator.userAgent || '';
+
+      // Check for mobile/tablet UA patterns
+      var mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|Tablet/i;
+      var isMobileUA = mobileRegex.test(ua);
+
+      // Also check for touch capability as backup (tablets without "Tablet" in UA)
+      var hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+      // Consider it mobile/tablet if UA matches OR it's a touch device with small/medium screen
+      var isSmallScreen = window.innerWidth <= 1024;
+      var isTouchDevice = hasTouch && isSmallScreen;
+
+      var result = isMobileUA || isTouchDevice;
+
+      if (result) {
+        console.log('[Playbox] Mobile/tablet detected, using direct loading (blob: URLs may not work in WebViews)');
+      }
+
+      return result;
+    })();
+
+    // Create Web Worker from inline code (used on desktop only)
+    var workerCode = `
+    // SDK detection patterns (simplified version for worker)
+    var SDK_PATTERNS = {
+      mraid: [/\\bmraid\\b/i, /mraid\\.js/i, /getState\\(\\)/],
+      dapi: [/\\bdapi\\b/i, /dapi\\.isReady/],
+      exitApi: [/ExitApi/i, /ExitApi\\.exit/],
+      fbPlayable: [/FbPlayableAd/i],
+      tiktok: [/TikTokApi/i, /openAppStore/],
+      superHtml: [/super_html/i, /set_google_play_url/]
+    };
+
+    // Analyze HTML for SDK usage
+    function analyzeHtml(html) {
+      var result = {
+        usesMraid: false,
+        supportsAudioControl: false,
+        supportsViewable: false,
+        detectedSdks: [],
+        fallbackStoreUrls: { apple: '', google: '' }
+      };
+
+      // Check each SDK
+      for (var sdk in SDK_PATTERNS) {
+        var patterns = SDK_PATTERNS[sdk];
+        var matches = 0;
+        for (var i = 0; i < patterns.length; i++) {
+          if (patterns[i].test(html)) matches++;
+        }
+        if (matches > 0) {
+          result.detectedSdks.push(sdk);
+          if (sdk === 'mraid' || sdk === 'dapi') {
+            result.usesMraid = true;
+            result.supportsAudioControl = true;
+            result.supportsViewable = true;
+          }
+        }
+      }
+
+      // Extract store URLs from HTML (anywhere in the code - variables, comments, strings)
+      // App Store URL pattern: https://apps.apple.com/{country}/app/{name}/id{digits}
+      var appleMatch = html.match(/https:\\/\\/apps\\.apple\\.com\\/[a-z]{2}\\/app\\/[^\\/]+\\/id\\d+/i);
+      if (appleMatch) result.fallbackStoreUrls.apple = appleMatch[0];
+
+      // Play Store URL pattern: https://play.google.com/store/apps/details?id={package}
+      var googleMatch = html.match(/https:\\/\\/play\\.google\\.com\\/store\\/apps\\/details\\?id=[a-zA-Z][a-zA-Z0-9_.]+/i);
+      if (googleMatch) result.fallbackStoreUrls.google = googleMatch[0];
+
+      return result;
+    }
+
+    // Inject base tag for relative path resolution
+    function injectBaseTag(html, baseUrl) {
+      var baseTag = '<base href="' + baseUrl + '">';
+
+      if (html.indexOf('<head>') !== -1) {
+        return html.replace('<head>', '<head>' + baseTag);
+      } else if (html.indexOf('<head ') !== -1) {
+        return html.replace(/<head[^>]*>/, function(match) {
+          return match + baseTag;
+        });
+      } else if (html.indexOf('<html') !== -1) {
+        return html.replace(/<html[^>]*>/, function(match) {
+          return match + '<head>' + baseTag + '</head>';
+        });
+      }
+      return baseTag + html;
+    }
+
+    // Main worker message handler
+    self.onmessage = function(e) {
+      var data = e.data;
+      var url = data.url;
+      var baseUrl = data.baseUrl;
+
+      console.log('[Worker] Starting fetch:', url);
+      var startTime = performance.now();
+
+      fetch(url)
+        .then(function(response) {
+          if (!response.ok) throw new Error('Failed to load: ' + response.status);
+          return response.text();
+        })
+        .then(function(html) {
+          console.log('[Worker] Fetched HTML:', (html.length / 1024 / 1024).toFixed(2) + 'MB');
+
+          // Analyze HTML (heavy regex operations)
+          var analysis = analyzeHtml(html);
+          console.log('[Worker] Analysis complete, SDKs:', analysis.detectedSdks);
+
+          // Inject base tag (string manipulation)
+          html = injectBaseTag(html, baseUrl);
+
+          // Create blob URL
+          var blob = new Blob([html], { type: 'text/html' });
+          var blobUrl = URL.createObjectURL(blob);
+
+          var elapsed = performance.now() - startTime;
+          console.log('[Worker] Prepared in ' + elapsed.toFixed(0) + 'ms');
+
+          // Send result back to main thread
+          self.postMessage({
+            success: true,
+            blobUrl: blobUrl,
+            analysis: analysis,
+            timing: elapsed
+          });
+        })
+        .catch(function(error) {
+          console.error('[Worker] Error:', error);
+          self.postMessage({
+            success: false,
+            error: error.message,
+            fallbackUrl: url
+          });
+        });
+    };
+  `;
+    var workerBlob = new Blob([workerCode], { type: 'application/javascript' });
+    var workerUrl = URL.createObjectURL(workerBlob);
+    var playableWorker = null;
+
+    // Don't use Worker+blob for mobile/tablet - WebViews have issues with blob: iframe src
+    if (!isMobileOrTablet) {
+      try {
+        playableWorker = new Worker(workerUrl);
+        console.log('[Playbox] Web Worker created for playable loading');
+      } catch (e) {
+        console.warn('[Playbox] Web Worker not supported, using main thread');
+      }
+    }
+
+    // Load playable via Web Worker (offloads heavy ops from main thread)
+    function loadPlayableAsync(iframe, url, callback) {
+      // Build absolute URLs (Worker can't use relative URLs)
+      var absoluteUrl = new URL(url, window.location.origin).href;
+      var baseUrl = absoluteUrl;
+      if (!baseUrl.endsWith('/')) baseUrl = baseUrl + '/';
+
+      if (playableWorker) {
+        // Use worker for heavy lifting
+        playableWorker.onmessage = function(e) {
+          var result = e.data;
+          if (result.success) {
+            console.log('[Playbox] Worker prepared playable in ' + result.timing.toFixed(0) + 'ms');
+
+            // Store analysis in iframe dataset
+            iframe.dataset.usesMraid = result.analysis.usesMraid ? 'true' : 'false';
+            iframe.dataset.supportsAudioControl = result.analysis.supportsAudioControl ? 'true' : 'false';
+            iframe.dataset.supportsViewable = result.analysis.supportsViewable ? 'true' : 'false';
+            iframe.dataset.fallbackAppleUrl = result.analysis.fallbackStoreUrls.apple || '';
+            iframe.dataset.fallbackGoogleUrl = result.analysis.fallbackStoreUrls.google || '';
+
+            // Set iframe src (this will still cause some freeze during HTML parsing)
+            iframe.src = result.blobUrl;
+
+            if (callback) callback(result.analysis);
+          } else {
+            console.warn('[Playbox] Worker failed, falling back:', result.error);
+            iframe.src = result.fallbackUrl || url;
+          }
+        };
+
+        playableWorker.onerror = function(e) {
+          console.error('[Playbox] Worker error:', e);
+          iframe.src = url;
+        };
+
+        // Start worker with absolute URL
+        playableWorker.postMessage({ url: absoluteUrl, baseUrl: baseUrl });
+      } else {
+        // Fallback: load directly (old behavior)
+        iframe.src = url;
+      }
+    }
+  
+
+      // ========== IFRAME LOADING ==========
+      var isDesktopView = window.innerWidth >= 768 && window.matchMedia('(pointer: fine)').matches;
+
+      if (isDesktopView) {
+        loadPlayableAsync(desktopIframe, playableUrl, function(analysis) {
+          console.log('[Playbox] Desktop playable ready, SDKs:', analysis.detectedSdks);
+        });
+        console.log('[Playbox] Desktop view: loading via Web Worker');
+      } else {
+        loadPlayableAsync(mobileIframe, playableUrl, function(analysis) {
+          console.log('[Playbox] Mobile playable ready');
+        });
+        console.log('[Playbox] Mobile view: loading via Web Worker');
+      }
+
+      // ========== PRELOADER ==========
+      function hidePreloaders() {
+        if (preloaderHidden) return;
+        preloaderHidden = true;
+
+        [preloaderMobile, preloaderDesktop].forEach(function(preloader) {
+          if (preloader) {
+            preloader.classList.add('hide');
+            setTimeout(function() {
+              if (preloader && preloader.parentNode) {
+                preloader.parentNode.removeChild(preloader);
+              }
+            }, 300);
+          }
+        });
+      }
+
+      mobileIframe.addEventListener('load', function() {
+        hidePreloaders();
+        injectCTAInterception(mobileIframe);
+      });
+
+      desktopIframe.addEventListener('load', function() {
+        hidePreloaders();
+        injectCTAInterception(desktopIframe);
+        injectSafeAreaToIframe(desktopIframe);
+
+        // Inject MRAID mock if playable uses MRAID (detected during load)
+        if (desktopIframe.dataset.usesMraid === 'true') {
+          injectMraidMock(desktopIframe);
+        }
+
+        // Show controls based on playable capabilities (detected during HTML analysis)
+        // This is reactive - controls appear based on static analysis, not timing
+        showControlsForCapabilities(desktopIframe);
+      });
+
+      setTimeout(hidePreloaders, 10000);
+
+      
+      // ========== CASUAL PROTECTION ==========
+      // Disable right-click context menu
+      document.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        return false;
+      });
+
+      // Block common download/inspect shortcuts
+      document.addEventListener('keydown', function(e) {
+        // Ctrl/Cmd + S (Save), U (View Source), P (Print)
+        if ((e.ctrlKey || e.metaKey) && ['s', 'u', 'p'].indexOf(e.key.toLowerCase()) !== -1) {
+          e.preventDefault();
+          return false;
+        }
+        // F12 (DevTools) - only prevent default, can't fully block
+        if (e.key === 'F12') {
+          e.preventDefault();
+          return false;
+        }
+      });
+
+      // Prevent drag events
+      document.addEventListener('dragstart', function(e) {
+        e.preventDefault();
+        return false;
+      });
+  
+      
+      // ========== DEVICE MANAGER ==========
+      var phoneFrame = document.getElementById('phone-frame');
+      var toggleBtn = document.getElementById('orientation-toggle');
+      var toggleLabel = document.getElementById('orientation-label');
+      var deviceDropdown = document.getElementById('device-dropdown');
+      var deviceTrigger = document.getElementById('device-dropdown-trigger');
+      var deviceLabel = document.getElementById('device-dropdown-label');
+      var warningToast = document.getElementById('orientation-warning');
+      var warningText = document.getElementById('warning-text');
+      var orientationLock = 'portrait';
+      var warningTimeout = null;
+
+      // Device dimensions config (injected from server)
+      var DEVICES = {"iphone-16-pro-max":{"width":440,"height":956,"type":"phone","notch":{"type":"dynamic-island","width":120,"height":32,"radius":20},"safeArea":{"top":59,"bottom":34,"left":0,"right":0}},"iphone-16-pro":{"width":402,"height":874,"type":"phone","notch":{"type":"dynamic-island","width":120,"height":32,"radius":20},"safeArea":{"top":59,"bottom":34,"left":0,"right":0}},"iphone-se":{"width":375,"height":667,"type":"phone","notch":null,"safeArea":{"top":20,"bottom":0,"left":0,"right":0}},"pixel-7-pro":{"width":412,"height":892,"type":"phone","notch":{"type":"punch-hole","width":20,"height":20,"radius":10},"safeArea":{"top":30,"bottom":0,"left":0,"right":0}},"galaxy-s23-ultra":{"width":384,"height":824,"type":"phone","notch":{"type":"punch-hole","width":18,"height":18,"radius":9},"safeArea":{"top":28,"bottom":0,"left":0,"right":0}},"generic-android":{"width":360,"height":800,"type":"phone","notch":null,"safeArea":{"top":24,"bottom":0,"left":0,"right":0}},"ipad-pro-12":{"width":1024,"height":1366,"type":"tablet","notch":null,"safeArea":{"top":24,"bottom":20,"left":0,"right":0}},"ipad-air":{"width":820,"height":1180,"type":"tablet","notch":null,"safeArea":{"top":24,"bottom":20,"left":0,"right":0}},"galaxy-tab-s8":{"width":800,"height":1280,"type":"tablet","notch":null,"safeArea":{"top":24,"bottom":0,"left":0,"right":0}},"generic-tablet":{"width":768,"height":1024,"type":"tablet","notch":null,"safeArea":{"top":24,"bottom":0,"left":0,"right":0}}};
+
+      // ========== LOCALSTORAGE PREFERENCES ==========
+      function getStorageKey() {
+        return 'playbox-prefs-' + window.location.pathname;
+      }
+
+      function savePreferences() {
+        try {
+          var prefs = { device: currentDevice, landscape: isLandscape };
+          localStorage.setItem(getStorageKey(), JSON.stringify(prefs));
+        } catch (e) {}
+      }
+
+      function loadPreferences() {
+        try {
+          var stored = localStorage.getItem(getStorageKey());
+          if (stored) {
+            var prefs = JSON.parse(stored);
+            if (prefs.device && DEVICES[prefs.device]) {
+              return prefs;
+            }
+          }
+        } catch (e) {}
+        return null;
+      }
+
+      // Load saved preferences
+      var savedPrefs = loadPreferences();
+      var currentDevice = savedPrefs ? savedPrefs.device : 'iphone-16-pro';
+      var isLandscape = savedPrefs ? savedPrefs.landscape : (orientationLock === 'landscape');
+      var smallScaleWarningShown = false;
+
+      // ========== DIMENSION CALCULATIONS ==========
+      function getDeviceDimensions(deviceId, landscape) {
+        var device = DEVICES[deviceId] || DEVICES['iphone-16-pro'];
+
+        var deviceW = landscape ? device.height : device.width;
+        var deviceH = landscape ? device.width : device.height;
+
+        var maxW = window.innerWidth - 72;
+        var maxH = window.innerHeight - 120;
+
+        var scaleW = maxW / deviceW;
+        var scaleH = maxH / deviceH;
+        var visualScale = Math.min(scaleW, scaleH, 1);
+
+        return {
+          width: deviceW,
+          height: deviceH,
+          type: device.type,
+          notch: device.notch,
+          scale: visualScale
+        };
+      }
+
+      function getSafeAreaInsets(deviceId, landscape) {
+        var device = DEVICES[deviceId] || DEVICES['iphone-16-pro'];
+        var sa = device.safeArea || { top: 0, bottom: 0, left: 0, right: 0 };
+
+        if (landscape) {
+          return { top: 0, bottom: 0, left: sa.top, right: sa.bottom };
+        }
+        return { top: sa.top, bottom: sa.bottom, left: sa.left, right: sa.right };
+      }
+
+      // ========== SAFE AREA INJECTION ==========
+      function injectSafeAreaToIframe(iframe) {
+        var safeArea = getSafeAreaInsets(currentDevice, isLandscape);
+
+        try {
+          var iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+          if (iframeDoc && iframeDoc.documentElement) {
+            var existingStyle = iframeDoc.getElementById('playbox-safe-area-override');
+            if (existingStyle) existingStyle.remove();
+
+            var style = iframeDoc.createElement('style');
+            style.id = 'playbox-safe-area-override';
+            style.textContent = ':root {' +
+              '--safe-area-inset-top: ' + safeArea.top + 'px !important;' +
+              '--safe-area-inset-bottom: ' + safeArea.bottom + 'px !important;' +
+              '--safe-area-inset-left: ' + safeArea.left + 'px !important;' +
+              '--safe-area-inset-right: ' + safeArea.right + 'px !important;' +
+              '--safe-top: ' + safeArea.top + 'px !important;' +
+              '--safe-bottom: ' + safeArea.bottom + 'px !important;' +
+              '--safe-left: ' + safeArea.left + 'px !important;' +
+              '--safe-right: ' + safeArea.right + 'px !important;' +
+            '}';
+            iframeDoc.head.appendChild(style);
+          }
+        } catch (e) {}
+
+        try {
+          iframe.contentWindow.postMessage({ type: 'SAFE_AREA_INSETS', safeArea: safeArea }, '*');
+        } catch (e) {}
+      }
+
+      function updateSafeAreaInsets() {
+        if (mobileIframe) injectSafeAreaToIframe(mobileIframe);
+        if (desktopIframe) injectSafeAreaToIframe(desktopIframe);
+      }
+
+      // ========== SCALE WARNING ==========
+      function checkWindowSize(scale, deviceType) {
+        if (scale < 0.5 && !smallScaleWarningShown) {
+          smallScaleWarningShown = true;
+          var message = deviceType === 'tablet'
+            ? 'Tablet mockup is scaled to ' + Math.round(scale * 100) + '%. Try a phone for better view.'
+            : 'Mockup scaled to ' + Math.round(scale * 100) + '%. Expand window for full size.';
+          showWarning(message);
+        }
+        if (scale >= 0.5) {
+          smallScaleWarningShown = false;
+        }
+      }
+
+      function showWarning(message) {
+        if (warningTimeout) clearTimeout(warningTimeout);
+        warningText.textContent = message;
+        warningToast.classList.add('show');
+        warningTimeout = setTimeout(function() {
+          warningToast.classList.remove('show');
+        }, 3000);
+      }
+
+      // ========== FRAME DIMENSIONS UPDATE ==========
+      function updateFrameDimensions(animate) {
+        var dims = getDeviceDimensions(currentDevice, isLandscape);
+        checkWindowSize(dims.scale, dims.type);
+
+        if (!animate) phoneFrame.classList.add('no-transition');
+
+        phoneFrame.style.width = dims.width + 'px';
+        phoneFrame.style.height = dims.height + 'px';
+
+        if (dims.scale < 1) {
+          phoneFrame.style.transform = 'scale(' + dims.scale + ')';
+          phoneFrame.style.transformOrigin = 'center center';
+          var widthDiff = dims.width * (1 - dims.scale);
+          var heightDiff = dims.height * (1 - dims.scale);
+          phoneFrame.style.margin = '-' + (heightDiff / 2) + 'px -' + (widthDiff / 2) + 'px';
+        } else {
+          phoneFrame.style.transform = 'none';
+          phoneFrame.style.margin = '0';
+        }
+
+        phoneFrame.classList.toggle('landscape', isLandscape);
+        toggleBtn.classList.toggle('landscape', isLandscape);
+        phoneFrame.classList.toggle('tablet', dims.type === 'tablet');
+
+        if (dims.notch) {
+          phoneFrame.classList.remove('no-notch');
+          phoneFrame.style.setProperty('--notch-width', dims.notch.width + 'px');
+          phoneFrame.style.setProperty('--notch-height', dims.notch.height + 'px');
+          phoneFrame.style.setProperty('--notch-radius', dims.notch.radius + 'px');
+        } else {
+          phoneFrame.classList.add('no-notch');
+        }
+
+        if (!animate) {
+          requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+              phoneFrame.classList.remove('no-transition');
+            });
+          });
+        }
+      }
+
+      // ========== INITIALIZATION ==========
+      phoneFrame.classList.add('no-transition');
+
+      if (isLandscape) {
+        toggleLabel.textContent = 'Portrait';
+      }
+
+      if (savedPrefs) {
+        var dropdownItems = deviceDropdown.querySelectorAll('.device-dropdown-item');
+        dropdownItems.forEach(function(item) {
+          var value = item.getAttribute('data-value');
+          if (value === currentDevice) {
+            dropdownItems.forEach(function(i) { i.classList.remove('selected'); });
+            item.classList.add('selected');
+            deviceLabel.textContent = item.textContent;
+          }
+        });
+      }
+
+      updateFrameDimensions(false);
+
+      requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+          phoneFrame.classList.remove('no-transition');
+        });
+      });
+
+      // ========== WINDOW RESIZE ==========
+      var resizeTimeout = null;
+      function handleResize() {
+        if (resizeTimeout) clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(function() {
+          updateFrameDimensions(false);
+          updateSafeAreaInsets();
+        }, 100);
+      }
+      window.addEventListener('resize', handleResize);
+
+      // ========== ORIENTATION TOGGLE ==========
+      toggleBtn.addEventListener('click', function() {
+        isLandscape = !isLandscape;
+        updateFrameDimensions(true);
+        updateSafeAreaInsets();
+        toggleLabel.textContent = isLandscape ? 'Portrait' : 'Landscape';
+        savePreferences();
+
+        if (orientationLock === 'portrait' && isLandscape) {
+          showWarning('Optimized for portrait');
+        } else if (orientationLock === 'landscape' && !isLandscape) {
+          showWarning('Optimized for landscape');
+        } else if (orientationLock !== 'none') {
+          warningToast.classList.remove('show');
+        }
+      });
+
+      // ========== DEVICE DROPDOWN ==========
+      deviceTrigger.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (storeCardOverlay && storeCardOverlay.classList.contains('show')) {
+          hideStoreCard();
+        }
+        deviceDropdown.classList.toggle('open');
+      });
+
+      document.addEventListener('click', function(e) {
+        if (!deviceDropdown.contains(e.target)) {
+          deviceDropdown.classList.remove('open');
+        }
+      });
+
+      var dropdownItems = deviceDropdown.querySelectorAll('.device-dropdown-item');
+      dropdownItems.forEach(function(item) {
+        item.addEventListener('click', function() {
+          var value = item.getAttribute('data-value');
+          var label = item.textContent;
+
+          dropdownItems.forEach(function(i) { i.classList.remove('selected'); });
+          item.classList.add('selected');
+          deviceLabel.textContent = label;
+
+          currentDevice = value;
+          smallScaleWarningShown = false;
+          updateFrameDimensions(true);
+          updateSafeAreaInsets();
+          savePreferences();
+          deviceDropdown.classList.remove('open');
+        });
+      });
+  
+      
+      // ========== MRAID CONTROLS ==========
+      var muteBtn = document.getElementById('mute-toggle');
+      var viewableBtn = document.getElementById('viewable-toggle');
+      var viewableOverlay = document.getElementById('viewable-overlay');
+      var mraidToast = document.getElementById('mraid-toast');
+      var mraidToastText = document.getElementById('mraid-toast-text');
+
+      // MRAID state (reset on page load, not persisted)
+      var isMuted = false;
+      var isViewable = true;
+      var mraidReady = false;
+      var mraidToastTimeout = null;
+
+      // ========== TOAST ==========
+      function showMraidToast(message) {
+        if (!mraidToast) return;
+        if (mraidToastTimeout) clearTimeout(mraidToastTimeout);
+        if (mraidToastText) mraidToastText.textContent = message;
+        mraidToast.classList.add('show');
+        mraidToastTimeout = setTimeout(function() {
+          mraidToast.classList.remove('show');
+        }, 3000);
+      }
+
+      // ========== DISPATCH TO IFRAME ==========
+      // Dispatch CustomEvent directly into iframe window (same-origin blob URL)
+      function dispatchToIframe(iframe, eventName, detail) {
+        if (!iframe) return;
+        try {
+          var win = iframe.contentWindow;
+          if (win) {
+            win.dispatchEvent(new CustomEvent(eventName, { detail: detail }));
+            console.log('[Playbox] Dispatched', eventName, detail, 'to iframe');
+          }
+        } catch (e) {
+          console.warn('[Playbox] Failed to dispatch to iframe:', e);
+        }
+      }
+
+      function broadcastToIframes(eventName, detail) {
+        dispatchToIframe(desktopIframe, eventName, detail);
+        dispatchToIframe(mobileIframe, eventName, detail);
+      }
+
+      // ========== CAPABILITY-BASED CONTROLS ==========
+      // Show controls based on static analysis of playable HTML
+      // This is reactive - doesn't depend on timing or postMessage
+      function showControlsForCapabilities(iframe) {
+        if (!iframe) return;
+
+        var supportsAudio = iframe.dataset.supportsAudioControl === 'true';
+        var supportsViewable = iframe.dataset.supportsViewable === 'true';
+
+        console.log('[Playbox] Showing controls for capabilities:', {
+          audioControl: supportsAudio,
+          viewable: supportsViewable
+        });
+
+        // Show mute button if playable supports MRAID 3.0 audio or DAPI
+        if (supportsAudio && muteBtn) {
+          muteBtn.classList.add('mraid-enabled');
+          console.log('[Playbox] Mute button enabled (audio control detected in HTML)');
+        }
+
+        // Show viewable button if playable supports viewable events
+        if (supportsViewable && viewableBtn) {
+          viewableBtn.classList.add('mraid-enabled');
+          console.log('[Playbox] Viewable button enabled (viewable support detected in HTML)');
+        }
+
+        // Mark MRAID as enabled if any SDK detected
+        if (iframe.dataset.usesMraid === 'true') {
+          iframe.dataset.mraidEnabled = 'true';
+        }
+      }
+
+      // ========== MRAID EVENT DETECTION (FALLBACK) ==========
+      // PostMessage listener as fallback for runtime detection
+      window.addEventListener('message', function(e) {
+        if (!e.data) return;
+
+        // MRAID mock is ready
+        if (e.data.type === 'mraid-ready') {
+          mraidReady = true;
+          console.log('[Playbox] MRAID mock ready');
+        }
+
+        // Playable subscribed to an MRAID event - show corresponding button (fallback)
+        if (e.data.type === 'mraid-event-subscribed') {
+          var event = e.data.event;
+          console.log('[Playbox] Playable subscribed to:', event);
+
+          // Fallback: show controls if not already shown by static analysis
+          if (event === 'audioVolumeChange' && muteBtn) {
+            muteBtn.classList.add('mraid-enabled');
+          }
+          if (event === 'viewableChange' && viewableBtn) {
+            viewableBtn.classList.add('mraid-enabled');
+          }
+        }
+      });
+
+      // ========== STATE UPDATES ==========
+      function updateMuteState() {
+        if (muteBtn) muteBtn.classList.toggle('muted', isMuted);
+        broadcastToIframes('playable-audio-mute', { muted: isMuted });
+      }
+
+      function updateViewableState() {
+        if (viewableBtn) viewableBtn.classList.toggle('hidden', !isViewable);
+        if (viewableOverlay) viewableOverlay.classList.toggle('show', !isViewable);
+        broadcastToIframes('playable-screen-lock', { locked: !isViewable });
+      }
+
+      // ========== BUTTON HANDLERS ==========
+      if (muteBtn) {
+        muteBtn.addEventListener('click', function() {
+          isMuted = !isMuted;
+          updateMuteState();
+          console.log('[Playbox] Mute toggled:', isMuted);
+        });
+      }
+
+      if (viewableBtn) {
+        viewableBtn.addEventListener('click', function() {
+          isViewable = !isViewable;
+          updateViewableState();
+          console.log('[Playbox] Viewable toggled:', isViewable);
+        });
+      }
+  
+      
+      // ========== DEBUG LOGGING ==========
+      function debugLog(message, data) {
+        console.log('[Playbox CTA Debug]', message, data || '');
+        try {
+          var debugEl = document.getElementById('playbox-debug-log');
+          if (debugEl) {
+            var time = new Date().toLocaleTimeString();
+            debugEl.textContent = time + ': ' + message + '\n' + debugEl.textContent;
+          }
+        } catch (e) {}
+      }
+
+      // ========== IFRAME CTA INJECTION ==========
+      function injectCTAInterception(iframe) {
+        debugLog('Attempting to inject CTA interception', { iframe: !!iframe });
+
+        try {
+          var iframeWin = iframe.contentWindow;
+          debugLog('Got contentWindow', { hasContentWindow: !!iframeWin });
+
+          var iframeDoc = null;
+          try {
+            iframeDoc = iframe.contentDocument || iframeWin.document;
+            debugLog('Got contentDocument', { hasContentDocument: !!iframeDoc });
+          } catch (docError) {
+            debugLog('Failed to access contentDocument (cross-origin)', { error: docError.message });
+          }
+
+          if (!iframeWin || !iframeDoc) {
+            debugLog('Cannot inject - cross-origin iframe detected');
+            debugLog('Playable must use postMessage manually for CTA to work');
+            return;
+          }
+
+          debugLog('Same-origin iframe - proceeding with injection');
+
+          // Store original window.open
+          var originalOpen = iframeWin.open;
+
+          // Override window.open
+          iframeWin.open = function(url, target, features) {
+            debugLog('window.open intercepted', { url: url });
+            window.parent.postMessage({ type: 'CTA_CLICK', url: url || '' }, '*');
+            return null;
+          };
+
+          debugLog('window.open override installed');
+
+          // Intercept link clicks
+          iframeDoc.addEventListener('click', function(e) {
+            var link = e.target.closest ? e.target.closest('a') : null;
+            if (!link) {
+              var el = e.target;
+              while (el && el.tagName !== 'A') el = el.parentNode;
+              link = el;
+            }
+
+            if (link && link.href && (link.target === '_blank' || link.href.indexOf('http') === 0)) {
+              debugLog('Link click intercepted', { url: link.href });
+              e.preventDefault();
+              e.stopPropagation();
+              window.parent.postMessage({ type: 'CTA_CLICK', url: link.href }, '*');
+            }
+          }, true);
+
+          debugLog('Click listener installed');
+
+        } catch (e) {
+          debugLog('Injection failed', { error: e.message });
+          debugLog('Fallback: Playable must use postMessage directly');
+        }
+      }
+  
+      
+      // ========== STORE CARD MODAL ==========
+      var storeCardOverlay = document.getElementById('store-card-overlay');
+      var storeCardIcon = document.getElementById('store-card-icon');
+      var storeCardTitle = document.getElementById('store-card-title');
+      var storeCardDeveloper = document.getElementById('store-card-developer');
+      var storeCardStars = document.getElementById('store-card-stars');
+      var storeCardRatingCount = document.getElementById('store-card-rating-count');
+      var storeCardGet = document.getElementById('store-card-get');
+      var storeCardClose = document.getElementById('store-card-close');
+      var storeCardBadge = document.getElementById('store-card-badge');
+      var currentStoreUrl = null;
+
+      // ========== HELPER FUNCTIONS ==========
+      // Render star rating using DOM methods (no innerHTML for security)
+      function renderStars(container, rating) {
+        if (!container) return;
+
+        var safeRating = parseFloat(rating) || 0;
+        if (safeRating < 0) safeRating = 0;
+        if (safeRating > 5) safeRating = 5;
+
+        var fullStars = Math.floor(safeRating);
+        var hasHalf = safeRating - fullStars >= 0.25;
+        var emptyStars = 5 - fullStars - (hasHalf ? 1 : 0);
+
+        // Clear container
+        container.textContent = '';
+
+        // Add full stars
+        for (var i = 0; i < fullStars; i++) {
+          container.appendChild(document.createTextNode('★'));
+        }
+
+        // Add half star using DOM
+        if (hasHalf) {
+          var halfStar = document.createElement('span');
+          halfStar.className = 'half-star';
+
+          var bgStar = document.createElement('span');
+          bgStar.className = 'half-star-bg';
+          bgStar.textContent = '☆';
+          halfStar.appendChild(bgStar);
+
+          var fillStar = document.createElement('span');
+          fillStar.className = 'half-star-fill';
+          fillStar.textContent = '★';
+          halfStar.appendChild(fillStar);
+
+          container.appendChild(halfStar);
+        }
+
+        // Add empty stars
+        for (var i = 0; i < emptyStars; i++) {
+          container.appendChild(document.createTextNode('☆'));
+        }
+      }
+
+      function formatCount(num) {
+        if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+        if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+        return num.toString();
+      }
+
+      // ========== PLAYBOX FALLBACK UI ==========
+      function showPlayboxFallback(reason) {
+        debugLog('Showing Playbox fallback UI', { reason: reason });
+
+        if (storeCardIcon) {
+          storeCardIcon.src = '/_assets/playbox-logo.png';
+          storeCardIcon.classList.remove('loading');
+        }
+        if (storeCardTitle) storeCardTitle.textContent = 'Demo Playable';
+        if (storeCardDeveloper) {
+          var message = reason === 'no-url'
+            ? 'App Store link not configured for this playable. Connect with Playbox to publish your game.'
+            : reason === 'invalid-url'
+            ? 'Invalid store link. This may be a demo or test playable. Connect with Playbox to publish your game.'
+            : 'Store metadata unavailable. Connect with Playbox to publish your game.';
+
+          storeCardDeveloper.textContent = message;
+          storeCardDeveloper.style.whiteSpace = 'normal';
+          storeCardDeveloper.style.lineHeight = '1.4';
+        }
+        if (storeCardStars) storeCardStars.textContent = '';
+        if (storeCardRatingCount) storeCardRatingCount.textContent = '';
+        if (storeCardBadge) storeCardBadge.textContent = 'Playbox Platform';
+        if (storeCardGet) storeCardGet.style.display = 'none';
+      }
+
+      // ========== STORE CARD SHOW/HIDE ==========
+      function showStoreCard(url) {
+        debugLog('showStoreCard called', { url: url });
+
+        if (!storeCardOverlay) {
+          debugLog('Store card overlay not found - opening URL directly');
+          if (url && url !== '') window.open(url, '_blank', 'noopener,noreferrer');
+          return;
+        }
+
+        var hasValidUrl = url && url !== '' && url !== 'undefined';
+        currentStoreUrl = hasValidUrl ? url : 'https://plbx.ai';
+
+        if (!hasValidUrl) {
+          showPlayboxFallback('no-url');
+          storeCardOverlay.classList.add('show');
+          return;
+        }
+
+        // Reset to loading state
+        if (storeCardIcon) {
+          storeCardIcon.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+          storeCardIcon.classList.add('loading');
+        }
+        if (storeCardTitle) storeCardTitle.textContent = 'Loading...';
+        if (storeCardDeveloper) {
+          storeCardDeveloper.textContent = '';
+          storeCardDeveloper.style.whiteSpace = '';
+          storeCardDeveloper.style.lineHeight = '';
+        }
+        if (storeCardStars) storeCardStars.textContent = '';
+        if (storeCardRatingCount) storeCardRatingCount.textContent = '';
+        if (storeCardGet) storeCardGet.style.display = '';
+        if (storeCardBadge) storeCardBadge.textContent = '';
+
+        // Detect store type
+        var isAppStore = url.indexOf('apps.apple.com') !== -1 || url.indexOf('itunes.apple.com') !== -1;
+        var isPlayStore = url.indexOf('play.google.com') !== -1;
+
+        if (isAppStore) {
+          if (storeCardBadge) storeCardBadge.textContent = 'App Store';
+          fetchAppStoreMetadata(url);
+        } else if (isPlayStore) {
+          if (storeCardBadge) storeCardBadge.textContent = 'Google Play';
+          fetchPlayStoreMetadata(url);
+        } else {
+          // Non-store URL - show Playbox logo as fallback
+          if (storeCardIcon) {
+            storeCardIcon.src = '/_assets/playbox-logo.png';
+            storeCardIcon.classList.remove('loading');
+          }
+          if (storeCardTitle) storeCardTitle.textContent = 'Open Link';
+          if (storeCardDeveloper) storeCardDeveloper.textContent = url.substring(0, 50) + (url.length > 50 ? '...' : '');
+        }
+
+        storeCardOverlay.classList.add('show');
+      }
+
+      function hideStoreCard() {
+        if (storeCardOverlay) storeCardOverlay.classList.remove('show');
+        currentStoreUrl = null;
+      }
+
+      // ========== APP STORE METADATA (via proxy to avoid CORS issues) ==========
+      function fetchAppStoreMetadata(url) {
+        debugLog('fetchAppStoreMetadata called', { url: url });
+
+        var appIdMatch = url.match(/id(\d+)/);
+        if (!appIdMatch) {
+          debugLog('Failed to extract app ID from URL');
+          showPlayboxFallback('invalid-url');
+          return;
+        }
+
+        var appId = appIdMatch[1];
+
+        // Extract country code from URL (e.g., /in/ from apps.apple.com/in/app/...)
+        var countryMatch = url.match(/apps\.apple\.com\/([a-z]{2})\//i);
+        var country = countryMatch ? countryMatch[1] : 'us';
+        debugLog('Extracted app ID and country', { appId: appId, country: country });
+
+        // Use server-side proxy to avoid CORS issues with iTunes API
+        var apiUrl = '/_api/app-store?id=' + appId + '&country=' + country;
+        debugLog('Fetching App Store API via proxy', { apiUrl: apiUrl });
+
+        fetch(apiUrl)
+          .then(function(response) {
+            debugLog('App Store API response', { status: response.status, ok: response.ok });
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            return response.json();
+          })
+          .then(function(data) {
+            debugLog('App Store API data received', data);
+
+            if (data && data.trackName) {
+              debugLog('App found', { name: data.trackName, developer: data.artistName });
+
+              var iconUrl = data.artworkUrl100 || '';
+
+              if (storeCardIcon) {
+                if (iconUrl) {
+                  storeCardIcon.onload = function() { storeCardIcon.classList.remove('loading'); };
+                  storeCardIcon.onerror = function() { storeCardIcon.classList.remove('loading'); };
+                  storeCardIcon.src = iconUrl;
+                } else {
+                  storeCardIcon.classList.remove('loading');
+                }
+              }
+              if (storeCardTitle) storeCardTitle.textContent = data.trackName || 'App';
+              if (storeCardDeveloper) storeCardDeveloper.textContent = data.artistName || '';
+              if (data.averageUserRating) {
+                renderStars(storeCardStars, data.averageUserRating);
+                if (storeCardRatingCount) storeCardRatingCount.textContent = data.userRatingCount ? '(' + formatCount(data.userRatingCount) + ')' : '';
+              }
+            } else {
+              debugLog('No data in App Store API response');
+              showPlayboxFallback('fetch-error');
+            }
+          })
+          .catch(function(error) {
+            debugLog('App Store API fetch error', { error: error.message });
+            showPlayboxFallback('fetch-error');
+          });
+      }
+
+      // ========== PLAY STORE METADATA (PROXY) ==========
+      function fetchPlayStoreMetadata(url) {
+        var packageIdMatch = url.match(/[?&]id=([a-zA-Z][a-zA-Z0-9_.]+)/);
+        if (!packageIdMatch) {
+          showPlayboxFallback('invalid-url');
+          return;
+        }
+
+        var packageId = packageIdMatch[1];
+
+        fetch('/_api/play-store?id=' + encodeURIComponent(packageId))
+          .then(function(response) {
+            if (!response.ok) throw new Error('Not found');
+            return response.json();
+          })
+          .then(function(data) {
+            if (data && data.name) {
+              var iconUrl = data.logo || 'https://www.gstatic.com/android/market_images/web/favicon_v3.ico';
+
+              if (storeCardIcon) {
+                storeCardIcon.onload = function() { storeCardIcon.classList.remove('loading'); };
+                storeCardIcon.onerror = function() { storeCardIcon.classList.remove('loading'); };
+                storeCardIcon.src = iconUrl;
+              }
+              if (storeCardTitle) storeCardTitle.textContent = data.name;
+              if (storeCardDeveloper) storeCardDeveloper.textContent = data.developer || '';
+              if (data.rating) {
+                renderStars(storeCardStars, data.rating);
+                if (storeCardRatingCount) storeCardRatingCount.textContent = data.noOfUsersRated ? '(' + data.noOfUsersRated + ')' : '';
+              } else {
+                if (storeCardStars) storeCardStars.textContent = '';
+                if (storeCardRatingCount) storeCardRatingCount.textContent = '';
+              }
+            } else {
+              showPlayboxFallback('fetch-error');
+            }
+          })
+          .catch(function() {
+            showPlayboxFallback('fetch-error');
+          });
+      }
+
+      // ========== EVENT LISTENERS ==========
+      if (storeCardClose) {
+        storeCardClose.addEventListener('click', hideStoreCard);
+      }
+      if (storeCardOverlay) {
+        storeCardOverlay.addEventListener('click', function(e) {
+          if (e.target === storeCardOverlay) hideStoreCard();
+        });
+      }
+      if (storeCardGet) {
+        storeCardGet.addEventListener('click', function() {
+          if (currentStoreUrl) window.open(currentStoreUrl, '_blank', 'noopener,noreferrer');
+          hideStoreCard();
+        });
+      }
+
+      // ========== MESSAGE LISTENER ==========
+      debugLog('Installing postMessage listener for CTA_CLICK events');
+
+      // Get fallback store URL from iframe dataset (extracted from HTML during analysis)
+      function getFallbackStoreUrl() {
+        var iframe = document.getElementById('playable-desktop') || document.getElementById('playable');
+        if (!iframe) return '';
+
+        var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        var fallbackUrl = isIOS
+          ? iframe.dataset.fallbackAppleUrl
+          : iframe.dataset.fallbackGoogleUrl;
+
+        // If platform-specific URL not found, try the other one
+        if (!fallbackUrl) {
+          fallbackUrl = iframe.dataset.fallbackAppleUrl || iframe.dataset.fallbackGoogleUrl || '';
+        }
+
+        debugLog('Fallback URL lookup', { isIOS: isIOS, fallbackUrl: fallbackUrl || '(none)' });
+        return fallbackUrl;
+      }
+
+      window.addEventListener('message', function(event) {
+        if (event.data && event.data.type) {
+          debugLog('postMessage received', {
+            type: event.data.type,
+            origin: event.origin,
+            hasUrl: !!event.data.url
+          });
+        }
+
+        if (event.data && event.data.type === 'CTA_CLICK') {
+          debugLog('CTA_CLICK message received', { url: event.data.url });
+          var url = event.data.url;
+
+          // If no URL provided, try to use fallback URL extracted from HTML
+          if (!url || url === '' || url === 'undefined' || url === 'null') {
+            debugLog('No URL in CTA - checking for fallback');
+            url = getFallbackStoreUrl();
+          }
+
+          if (url && url !== '') {
+            var isStoreUrl = url.indexOf('apps.apple.com') !== -1 ||
+                            url.indexOf('itunes.apple.com') !== -1 ||
+                            url.indexOf('play.google.com') !== -1;
+
+            if (isStoreUrl) {
+              debugLog('Store URL detected - showing store card', { url: url });
+              showStoreCard(url);
+            } else {
+              debugLog('Non-store URL - opening in new tab');
+              window.open(url, '_blank', 'noopener,noreferrer');
+            }
+          } else {
+            debugLog('No URL and no fallback found - showing Playbox fallback');
+            showStoreCard('');
+          }
+        }
+      });
+  
+    })();
+  </script>
+</body>
+</html>

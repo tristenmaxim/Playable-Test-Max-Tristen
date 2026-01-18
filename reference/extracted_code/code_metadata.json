@@ -1,0 +1,47 @@
+{
+  "scripts": [
+    {
+      "filename": "script_00_module.js",
+      "type": "module",
+      "size_kb": 2900.95
+    },
+    {
+      "filename": "script_01_inline.js",
+      "type": "inline",
+      "size_kb": 1.71
+    },
+    {
+      "filename": "script_02_inline.js",
+      "type": "inline",
+      "size_kb": 0.75
+    }
+  ],
+  "styles": [
+    {
+      "filename": "style_00.css",
+      "size_kb": 0.54
+    },
+    {
+      "filename": "style_01.css",
+      "size_kb": 0.01
+    },
+    {
+      "filename": "style_02.css",
+      "size_kb": 0.01
+    },
+    {
+      "filename": "style_03.css",
+      "size_kb": 42.41
+    }
+  ],
+  "analysis": {
+    "total_scripts": 3,
+    "total_styles": 4,
+    "total_js_size_kb": 2903.41,
+    "total_css_size_kb": 42.97,
+    "is_minified": false,
+    "detected_libraries": [
+      "PixiJS"
+    ]
+  }
+}

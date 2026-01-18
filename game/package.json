@@ -1,0 +1,21 @@
+{
+  "name": "runner-game",
+  "version": "1.0.0",
+  "description": "Runner game clone based on playable creative analysis",
+  "type": "module",
+  "scripts": {
+    "dev": "python3 -m http.server 8000",
+    "build": "node build/bundle.js"
+  },
+  "keywords": [
+    "game",
+    "pixijs",
+    "runner"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "pixi.js": "^8.0.0"
+  },
+  "devDependencies": {}
+}

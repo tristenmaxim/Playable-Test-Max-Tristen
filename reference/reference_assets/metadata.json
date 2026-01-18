@@ -1,0 +1,301 @@
+{
+  "html_size_mb": 2.88,
+  "data_uri_assets_count": 46,
+  "data_uri_assets_total_size_kb": 1726.34,
+  "urls_found": 3,
+  "urls": [
+    "enemy-spritesheet.png",
+    "image.png",
+    "player-woman.png"
+  ],
+  "analysis": {
+    "has_canvas": false,
+    "has_webgl": true,
+    "has_phaser": false,
+    "has_pixi": true,
+    "has_three": false,
+    "has_audio": true,
+    "has_animation": true,
+    "detected_libraries": [
+      "PixiJS"
+    ]
+  },
+  "assets": [
+    {
+      "filename": "asset_0000.bin",
+      "mime_type": "video/webm",
+      "size": 515,
+      "size_kb": 0.5
+    },
+    {
+      "filename": "asset_0001.avif",
+      "mime_type": "image/avif",
+      "size": 311,
+      "size_kb": 0.3
+    },
+    {
+      "filename": "asset_0002.webp",
+      "mime_type": "image/webp",
+      "size": 38,
+      "size_kb": 0.04
+    },
+    {
+      "filename": "asset_0003.png",
+      "mime_type": "image/png",
+      "size": 68,
+      "size_kb": 0.07
+    },
+    {
+      "filename": "asset_0004.png",
+      "mime_type": "image/png",
+      "size": 248724,
+      "size_kb": 242.89
+    },
+    {
+      "filename": "asset_0005.png",
+      "mime_type": "image/png",
+      "size": 448741,
+      "size_kb": 438.22
+    },
+    {
+      "filename": "asset_0006.webp",
+      "mime_type": "image/webp",
+      "size": 4480,
+      "size_kb": 4.38
+    },
+    {
+      "filename": "asset_0007.webp",
+      "mime_type": "image/webp",
+      "size": 2398,
+      "size_kb": 2.34
+    },
+    {
+      "filename": "asset_0008.png",
+      "mime_type": "image/png",
+      "size": 14459,
+      "size_kb": 14.12
+    },
+    {
+      "filename": "asset_0009.webp",
+      "mime_type": "image/webp",
+      "size": 23816,
+      "size_kb": 23.26
+    },
+    {
+      "filename": "asset_0010.png",
+      "mime_type": "image/png",
+      "size": 10209,
+      "size_kb": 9.97
+    },
+    {
+      "filename": "asset_0011.png",
+      "mime_type": "image/png",
+      "size": 416,
+      "size_kb": 0.41
+    },
+    {
+      "filename": "asset_0012.png",
+      "mime_type": "image/png",
+      "size": 948,
+      "size_kb": 0.93
+    },
+    {
+      "filename": "asset_0013.png",
+      "mime_type": "image/png",
+      "size": 789,
+      "size_kb": 0.77
+    },
+    {
+      "filename": "asset_0014.png",
+      "mime_type": "image/png",
+      "size": 2181,
+      "size_kb": 2.13
+    },
+    {
+      "filename": "asset_0015.png",
+      "mime_type": "image/png",
+      "size": 151258,
+      "size_kb": 147.71
+    },
+    {
+      "filename": "asset_0016.png",
+      "mime_type": "image/png",
+      "size": 5392,
+      "size_kb": 5.27
+    },
+    {
+      "filename": "asset_0017.png",
+      "mime_type": "image/png",
+      "size": 4855,
+      "size_kb": 4.74
+    },
+    {
+      "filename": "asset_0018.png",
+      "mime_type": "image/png",
+      "size": 9017,
+      "size_kb": 8.81
+    },
+    {
+      "filename": "asset_0019.png",
+      "mime_type": "image/png",
+      "size": 7797,
+      "size_kb": 7.61
+    },
+    {
+      "filename": "asset_0020.png",
+      "mime_type": "image/png",
+      "size": 17401,
+      "size_kb": 16.99
+    },
+    {
+      "filename": "asset_0021.png",
+      "mime_type": "image/png",
+      "size": 17283,
+      "size_kb": 16.88
+    },
+    {
+      "filename": "asset_0022.png",
+      "mime_type": "image/png",
+      "size": 444,
+      "size_kb": 0.43
+    },
+    {
+      "filename": "asset_0023.png",
+      "mime_type": "image/png",
+      "size": 420,
+      "size_kb": 0.41
+    },
+    {
+      "filename": "asset_0024.png",
+      "mime_type": "image/png",
+      "size": 318,
+      "size_kb": 0.31
+    },
+    {
+      "filename": "asset_0025.png",
+      "mime_type": "image/png",
+      "size": 455,
+      "size_kb": 0.44
+    },
+    {
+      "filename": "asset_0026.png",
+      "mime_type": "image/png",
+      "size": 344,
+      "size_kb": 0.34
+    },
+    {
+      "filename": "asset_0027.png",
+      "mime_type": "image/png",
+      "size": 333,
+      "size_kb": 0.33
+    },
+    {
+      "filename": "asset_0028.wav",
+      "mime_type": "audio/wav",
+      "size": 48,
+      "size_kb": 0.05
+    },
+    {
+      "filename": "asset_0029.wav",
+      "mime_type": "audio/wav",
+      "size": 48,
+      "size_kb": 0.05
+    },
+    {
+      "filename": "asset_0030.mp3",
+      "mime_type": "audio/mpeg",
+      "size": 1898,
+      "size_kb": 1.85
+    },
+    {
+      "filename": "asset_0031.mp3",
+      "mime_type": "audio/mpeg",
+      "size": 1166,
+      "size_kb": 1.14
+    },
+    {
+      "filename": "asset_0032.mp3",
+      "mime_type": "audio/mpeg",
+      "size": 3047,
+      "size_kb": 2.98
+    },
+    {
+      "filename": "asset_0033.mp3",
+      "mime_type": "audio/mpeg",
+      "size": 5032,
+      "size_kb": 4.91
+    },
+    {
+      "filename": "asset_0034.mp3",
+      "mime_type": "audio/mpeg",
+      "size": 2316,
+      "size_kb": 2.26
+    },
+    {
+      "filename": "asset_0035.mp3",
+      "mime_type": "audio/mpeg",
+      "size": 40635,
+      "size_kb": 39.68
+    },
+    {
+      "filename": "asset_0036.mp3",
+      "mime_type": "audio/mpeg",
+      "size": 30125,
+      "size_kb": 29.42
+    },
+    {
+      "filename": "asset_0037.mp3",
+      "mime_type": "audio/mpeg",
+      "size": 360442,
+      "size_kb": 351.99
+    },
+    {
+      "filename": "asset_0038.png",
+      "mime_type": "image/png",
+      "size": 74811,
+      "size_kb": 73.06
+    },
+    {
+      "filename": "asset_0039.webp",
+      "mime_type": "image/webp",
+      "size": 78284,
+      "size_kb": 76.45
+    },
+    {
+      "filename": "asset_0040.webp",
+      "mime_type": "image/webp",
+      "size": 47642,
+      "size_kb": 46.53
+    },
+    {
+      "filename": "asset_0041.png",
+      "mime_type": "image/png",
+      "size": 15716,
+      "size_kb": 15.35
+    },
+    {
+      "filename": "asset_0042.webp",
+      "mime_type": "image/webp",
+      "size": 16772,
+      "size_kb": 16.38
+    },
+    {
+      "filename": "asset_0043.png",
+      "mime_type": "image/png",
+      "size": 12047,
+      "size_kb": 11.76
+    },
+    {
+      "filename": "asset_0044.png",
+      "mime_type": "image/png",
+      "size": 77993,
+      "size_kb": 76.17
+    },
+    {
+      "filename": "asset_0045.ttf",
+      "mime_type": "font/ttf",
+      "size": 26336,
+      "size_kb": 25.72
+    }
+  ]
+}

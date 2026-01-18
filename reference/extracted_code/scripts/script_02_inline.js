@@ -1,0 +1,3 @@
+
+/* Playbox CTA Helper - Auto-injected */
+(function(){var t=window.self===window.top;function r(u){window.location.href="/_redirect?url="+encodeURIComponent(u||"")}window.open=function(e){if(t){r(e);return null}try{window.parent.postMessage({type:"CTA_CLICK",url:e||window.location.href},"*")}catch(e){console.error("[Playbox CTA] postMessage failed:",e)}return null},document.addEventListener("click",function(e){for(var n=e.target;n&&"A"!==n.tagName;)n=n.parentElement;n&&n.href&&(0===n.href.indexOf("http")||"_blank"===n.target)&&(e.preventDefault(),e.stopPropagation(),t?r(n.href):window.parent.postMessage({type:"CTA_CLICK",url:n.href},"*"))},!0),window.playboxCTA=function(e){return t?(r(e),!0):(window.parent.postMessage({type:"CTA_CLICK",url:e},"*"),!0)}})();
