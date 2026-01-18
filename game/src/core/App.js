@@ -13,6 +13,8 @@ export class App {
     this.app = null
     this.assetLoader = null
     this.gameController = null
+    this.lastTapTime = 0
+    this.TAP_DELAY = 300 // мс - задержка между тапами для debouncing
   }
 
   /**
@@ -33,6 +35,9 @@ export class App {
 
     // Инициализация GameController
     await this.gameController.init()
+
+    // Настройка обработчиков ввода
+    this.setupInputHandlers()
 
     // Запуск игрового цикла
     this.startGameLoop()
@@ -79,6 +84,79 @@ export class App {
         this.gameController.update(ticker.deltaMS)
       }
     })
+  }
+
+  /**
+   * Настройка обработчиков ввода
+   * Основано на анализе из ../анализ/16_input_system.md
+   */
+  setupInputHandlers() {
+    // Touch события (мобильные устройства)
+    window.addEventListener('touchstart', this.handlePointerDown.bind(this), { passive: true })
+    window.addEventListener('touchend', this.handlePointerUp.bind(this), { passive: true })
+    window.addEventListener('touchcancel', this.handlePointerUp.bind(this), { passive: true })
+
+    // Mouse события (десктоп)
+    window.addEventListener('mousedown', this.handlePointerDown.bind(this))
+    window.addEventListener('mouseup', this.handlePointerUp.bind(this))
+    window.addEventListener('click', this.handleClick.bind(this))
+
+    // Keyboard события (опционально - пробел для прыжка)
+    window.addEventListener('keydown', this.handleKeyDown.bind(this))
+  }
+
+  /**
+   * Обработка начала касания/нажатия
+   */
+  handlePointerDown(event) {
+    event.preventDefault()
+    this.handleTap()
+  }
+
+  /**
+   * Обработка окончания касания/отпускания
+   */
+  handlePointerUp(event) {
+    event.preventDefault()
+    // Можно добавить дополнительную логику если нужно
+  }
+
+  /**
+   * Обработка клика мыши
+   */
+  handleClick(event) {
+    event.preventDefault()
+    this.handleTap()
+  }
+
+  /**
+   * Обработка нажатия клавиши
+   */
+  handleKeyDown(event) {
+    // Пробел для прыжка/старта
+    if (event.code === 'Space' || event.key === ' ') {
+      event.preventDefault()
+      this.handleTap()
+    }
+  }
+
+  /**
+   * Универсальный обработчик тапа с debouncing
+   */
+  handleTap() {
+    const now = Date.now()
+    
+    // Debouncing - предотвращение слишком частых кликов
+    if (now - this.lastTapTime < this.TAP_DELAY) {
+      return
+    }
+    
+    this.lastTapTime = now
+    
+    // Передача события в GameController
+    if (this.gameController) {
+      this.gameController.handleTap()
+    }
   }
 
   /**

@@ -8,6 +8,15 @@
   <!-- GSAP CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   
+  <!-- Import Map для ES модулей (PixiJS v8) -->
+  <script type="importmap">
+    {
+      "imports": {
+        "pixi.js": "https://cdn.jsdelivr.net/npm/pixi.js@8.0.0/dist/pixi.mjs"
+      }
+    }
+  </script>
+  
   <style>
     /* Reset */
     * {
@@ -72,9 +81,17 @@
       try {
         const app = new App()
         await app.init()
-        console.log('Game initialized successfully')
+        
+        // Экспорт для проверки в консоли браузера
+        window.gameApp = app
+        window.gameController = app.gameController
+        
+        console.log('✅ Game initialized successfully')
+        
+        // Экспорт для отладки в консоли
+        console.log('💡 Доступно в консоли: window.gameApp, window.gameController')
       } catch (error) {
-        console.error('Failed to initialize game:', error)
+        console.error('❌ Failed to initialize game:', error)
         document.getElementById('preloader').innerHTML = 
           '<div class="preloader-content" style="color: #ff0000;">Ошибка загрузки игры</div>'
       }
