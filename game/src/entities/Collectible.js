@@ -168,22 +168,19 @@ export class Collectible {
 
   /**
    * Обновление коллекции
-   * Коллекции должны двигаться синхронно с фоном (та же скорость)
+   * Коллекции стоят на месте (статичные)
    * @param {number} deltaMS - Время с последнего кадра в миллисекундах
-   * @param {number} backgroundSpeed - Скорость фона (пикселей/сек), должна быть такой же как у ParallaxBackground
+   * @param {number} backgroundSpeed - Скорость фона (не используется, коллектблы статичные)
    */
   update(deltaMS, backgroundSpeed = 0) {
     if (!this.sprite || !this.isActive || this.isCollected) return
     
-    // Движение влево синхронно с фоном
-    // Используем ту же формулу, что и фон: speed * deltaMS / 1000
-    const deltaSeconds = deltaMS / 1000
-    const deltaX = backgroundSpeed * deltaSeconds
-    this.x -= deltaX
-    this.sprite.x = this.x
+    // Коллектблы стоят на месте (статичные)
+    // Позиция не изменяется
     
-    // Анимация вращения (для будущих этапов можно добавить)
-    // this.sprite.rotation += 0.05 * deltaSeconds
+    // Анимация вращения
+    const deltaSeconds = deltaMS / 1000
+    this.sprite.rotation += 0.05 * deltaSeconds
   }
 
   /**

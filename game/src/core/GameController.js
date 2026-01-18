@@ -297,21 +297,19 @@ export class GameController {
       // Проверка и спавн коллекций по расстоянию
       this.checkCollectibleSpawns()
 
-      // Обновление коллекций (движение влево синхронно с фоном)
-      // Коллекции должны двигаться с той же скоростью, что и фон
-      // Используем ту же скорость, что передаётся в ParallaxBackground.update()
-      const backgroundSpeed = this.currentSpeed
+      // Обновление коллекций (коллектблы статичные, стоят на месте)
       for (let i = this.collectibles.length - 1; i >= 0; i--) {
         const collectible = this.collectibles[i]
         if (collectible.isActive && !collectible.isCollected) {
-          // Обновляем коллекцию с той же скоростью, что и фон
-          collectible.update(deltaMS, backgroundSpeed)
+          // Обновляем коллекцию (анимация вращения)
+          collectible.update(deltaMS, 0)
           
-          // Удаляем коллекции, которые ушли за левый край экрана
-          if (collectible.x + collectible.width < 0) {
-            collectible.destroy()
-            this.collectibles.splice(i, 1)
-          }
+          // Удаляем коллекции, которые ушли за левый край экрана (если они движутся)
+          // Для статичных коллектблов эта проверка не нужна, но оставляем на случай будущих изменений
+          // if (collectible.x + collectible.width < 0) {
+          //   collectible.destroy()
+          //   this.collectibles.splice(i, 1)
+          // }
         }
       }
 
