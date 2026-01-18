@@ -100,8 +100,8 @@ export class GameController {
   update(deltaMS) {
     // Всегда обновляем фон
     if (this.parallaxBackground) {
-      // В INTRO фон движется медленно для визуального эффекта, в RUNNING - с полной скоростью
-      const speed = this.isRunning ? this.currentSpeed : CONSTANTS.SPEED.BASE * 0.3
+      // В INTRO фон не движется, в RUNNING - движется
+      const speed = this.isRunning ? this.currentSpeed : 0
       this.parallaxBackground.update(deltaMS, speed)
     }
 
