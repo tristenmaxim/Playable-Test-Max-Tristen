@@ -41,10 +41,9 @@ export class ParallaxBackground extends Container {
     // Состояние
     this.isPaused = false
     this.scrollOffset = 0
-    // roadY вычисляется как Me - oe.GROUND_Y (из анализа)
-    // Me = window.innerHeight, oe.GROUND_Y = window.innerHeight * 0.8
-    // Значит roadY = window.innerHeight - window.innerHeight * 0.8 = window.innerHeight * 0.2
-    this.roadY = window.innerHeight - CONSTANTS.POSITIONS.GROUND_Y
+    // roadY будет вычислен в createPropPools() как (Me - oe.GROUND_Y) * scale
+    // Референс: Me=1280, oe.GROUND_Y=280, roadY=1000
+    this.roadY = 0 // Будет установлен в createPropPools()
     
     // Z-Index
     this.sortableChildren = true
@@ -130,25 +129,19 @@ export class ParallaxBackground extends Container {
 
     // Из референса: const t=$e/this.bgTexture.width, A=Me/this.bgTexture.height
     // Референс: $e=window.innerWidth, Me=1280 (фиксированное значение)
-    const referenceHeight = CONSTANTS.POSITIONS.REFERENCE_SCREEN_HEIGHT // 1280
+    // Для адаптации к разным размерам экрана используем текущую высоту экрана
     const scaleX = screenWidth / textureWidth
-    // В референсе используется фиксированное Me=1280 для вычисления scaleY
-    // Вычисляем референсный bgScale и масштабируем его
-    const referenceScaleX = screenWidth / textureWidth
-    const referenceScaleY = referenceHeight / textureHeight
-    const referenceBgScale = Math.max(referenceScaleX, referenceScaleY)
-    
-    // Масштабируем bgScale пропорционально высоте экрана
-    const heightScale = screenHeight / referenceHeight
-    this.bgScale = referenceBgScale * heightScale
+    const scaleY = screenHeight / textureHeight
+    // В референсе: bgScale = Math.max(scaleX, scaleY)
+    // Используем текущие размеры экрана для адаптации
+    this.bgScale = Math.max(scaleX, scaleY)
     
     // Из референса: const r=this.bgTexture.width*this.bgScale
     const tileWidth = textureWidth * this.bgScale
     
     // Из референса: const s=(Me-this.bgTexture.height*this.bgScale)/2 - центрирование по Y!
-    // В референсе Me=1280, вычисляем референсный tileY и масштабируем
-    const referenceTileY = (referenceHeight - textureHeight * referenceBgScale) / 2
-    this.tileY = referenceTileY * heightScale // Сохраняем для использования в createPropPools
+    // Используем текущую высоту экрана для адаптации
+    this.tileY = (screenHeight - textureHeight * this.bgScale) / 2 // Сохраняем для использования в createPropPools
     
     // Из референса: n=6
     const tileCount = 6

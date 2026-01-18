@@ -12,15 +12,14 @@
 1. **[00_roadmap.md](./00_roadmap.md)** - Общий roadmap реализации
 2. **[01_architecture.md](./01_architecture.md)** - Архитектура проекта
 3. **[01_structure.md](./01_structure.md)** - Структура проекта и кода
-4. **[09_incremental_steps.md](./09_incremental_steps.md)** - ⭐ Поэтапный план с контролем (РЕКОМЕНДУЕТСЯ)
-5. **[10_plan_comparison.md](./10_plan_comparison.md)** - Сравнение поэтапного плана и фаз
-6. **[02_phase1_core.md](./02_phase1_core.md)** - Фаза 1: Основные системы (справочник)
-7. **[03_phase2_entities.md](./03_phase2_entities.md)** - Фаза 2: Игровые сущности (справочник)
-8. **[04_phase3_gameplay.md](./04_phase3_gameplay.md)** - Фаза 3: Игровая логика (справочник)
-9. **[05_phase4_ui.md](./05_phase4_ui.md)** - Фаза 4: UI система (справочник)
-10. **[06_phase5_polish.md](./06_phase5_polish.md)** - Фаза 5: Полировка и оптимизация (справочник)
-11. **[07_assets_plan.md](./07_assets_plan.md)** - План работы с ассетами
-12. **[08_testing_plan.md](./08_testing_plan.md)** - План тестирования
+4. **[09_incremental_steps.md](./09_incremental_steps.md)** - ⭐ Поэтапный план с контролем (рекомендуется)
+5. **[02_phase1_core.md](./02_phase1_core.md)** - Фаза 1: Основные системы
+6. **[03_phase2_entities.md](./03_phase2_entities.md)** - Фаза 2: Игровые сущности
+7. **[04_phase3_gameplay.md](./04_phase3_gameplay.md)** - Фаза 3: Игровая логика
+8. **[05_phase4_ui.md](./05_phase4_ui.md)** - Фаза 4: UI система
+9. **[06_phase5_polish.md](./06_phase5_polish.md)** - Фаза 5: Полировка и оптимизация
+10. **[07_assets_plan.md](./07_assets_plan.md)** - План работы с ассетами
+11. **[08_testing_plan.md](./08_testing_plan.md)** - План тестирования
 
 ---
 

@@ -64,7 +64,7 @@ export class Player {
     this.sprite = null
     
     // Позиция
-    this.x = window.innerWidth * 0.4 // Фиксированная позиция по X (40% от ширины экрана, как в референсе)
+    this.x = window.innerWidth * 0.18 // Фиксированная позиция по X (18% от ширины экрана, как в референсе: oe.X_POSITION = 0.18)
     // Используем переданный groundY или вычисляем из констант
     // groundY должен быть roadY из ParallaxBackground (где стоят кусты)
     this.y = groundY || CONSTANTS.POSITIONS.GROUND_Y
@@ -225,21 +225,12 @@ export class Player {
   setupSprite() {
     if (!this.sprite) return
 
-    // Настраиваем размер персонажа
-    // В референсе персонаж занимает примерно 1/5-1/4 высоты экрана (200-250px при высоте 1000px)
-    // Используем пропорциональный масштаб относительно высоты экрана
-    const referenceScreenHeight = CONSTANTS.POSITIONS.REFERENCE_SCREEN_HEIGHT // 1280px
-    const referencePlayerHeight = 250 // Примерная высота персонажа в референсе (1/5 от 1280)
-    const currentScreenHeight = window.innerHeight
+    // Референс использует фиксированный масштаб oe.SCALE = 0.54
+    // НЕ пропорциональный расчет, а фиксированное значение!
+    // В референсе: sprite.scale.set(oe.SCALE) где oe.SCALE = 0.54
+    const PLAYER_SCALE = 0.54 // Фиксированное значение из референса
     
-    // Вычисляем целевую высоту персонажа пропорционально текущей высоте экрана
-    const targetHeight = (referencePlayerHeight / referenceScreenHeight) * currentScreenHeight
-    
-    // Вычисляем масштаб на основе реальной высоты спрайта
-    const spriteHeight = this.sprite.height || 254 // Высота кадра из IDLE_FRAMES (254px)
-    const scale = targetHeight / spriteHeight
-    
-    this.sprite.scale.set(scale, scale)
+    this.sprite.scale.set(PLAYER_SCALE, PLAYER_SCALE)
 
     // Anchor: центр по X, низ по Y (из анализа)
     this.sprite.anchor.set(0.5, 1)
@@ -248,12 +239,10 @@ export class Player {
     this.sprite.zIndex = this.zIndex
 
     console.log('✅ Спрайт героя настроен:', {
-      spriteHeight,
-      targetHeight,
-      scale,
-      finalWidth: this.sprite.width,
-      finalHeight: this.sprite.height,
-      screenHeight: currentScreenHeight
+      scale: PLAYER_SCALE,
+      finalWidth: this.sprite.width * PLAYER_SCALE,
+      finalHeight: this.sprite.height * PLAYER_SCALE,
+      screenHeight: window.innerHeight
     })
   }
 
@@ -404,9 +393,11 @@ export class Player {
       return { x: 0, y: 0, width: 0, height: 0 }
     }
 
+    // Anchor (0.5, 1) означает: центр по X, низ по Y
+    // sprite.y - это позиция низа спрайта
     return {
       x: this.sprite.x - this.sprite.width / 2,
-      y: this.sprite.y - this.sprite.height,
+      y: this.sprite.y - this.sprite.height, // От низа спрайта вычитаем высоту для получения верха
       width: this.sprite.width,
       height: this.sprite.height
     }
@@ -416,7 +407,7 @@ export class Player {
    * Сброс игрока в начальное состояние (для будущих этапов)
    */
   reset(groundY = null) {
-    this.x = window.innerWidth * 0.4
+    this.x = window.innerWidth * 0.18
     this.y = groundY || this.y || CONSTANTS.POSITIONS.GROUND_Y
     this.isOnGround = true
     this.isInvincible = false

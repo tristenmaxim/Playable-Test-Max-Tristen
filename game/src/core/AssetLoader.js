@@ -3,7 +3,7 @@
  * Основано на анализе из ../анализ/09_assets.md
  */
 
-import { Assets, Texture, Spritesheet } from 'pixi.js'
+import { Assets, Texture } from 'pixi.js'
 
 export class AssetLoader {
   constructor() {
@@ -57,7 +57,7 @@ export class AssetLoader {
     const texture = await this.loadTexture(imageUrl)
 
     // Создаём spritesheet через PixiJS
-    const spritesheet = new Spritesheet(texture, jsonData)
+    const spritesheet = new Assets.Spritesheet(texture, jsonData)
     await spritesheet.parse()
 
     return spritesheet
