@@ -6,6 +6,7 @@
 import { Container } from 'pixi.js'
 import { CONSTANTS } from './Constants.js'
 import { ParallaxBackground } from '../entities/ParallaxBackground.js'
+import { Player } from '../entities/Player.js'
 
 export class GameController {
   constructor(app, assetLoader) {
@@ -28,6 +29,9 @@ export class GameController {
     this.gameContainer = null
     this.entityContainer = null
     this.parallaxBackground = null
+    
+    // Игровые сущности
+    this.player = null
 
     // События
     this.events = new Map()
@@ -52,6 +56,9 @@ export class GameController {
     // Инициализация фона
     await this.initBackground()
 
+    // Инициализация игрока
+    await this.initPlayer()
+
     // Установка начального состояния
     this.setState(CONSTANTS.STATES.INTRO)
     
@@ -75,6 +82,23 @@ export class GameController {
     this.parallaxBackground.zIndex = CONSTANTS.Z_INDEX.FAR_BACKGROUND
     this.gameContainer.addChild(this.parallaxBackground)
     await this.parallaxBackground.init()
+  }
+
+  /**
+   * Инициализация игрока
+   */
+  async initPlayer() {
+    // Используем roadY из ParallaxBackground для правильной позиции игрока
+    // roadY - это позиция земли, где стоят кусты и деревья
+    const groundY = this.parallaxBackground ? this.parallaxBackground.roadY : CONSTANTS.POSITIONS.GROUND_Y
+    
+    this.player = new Player(this.app, this.assetLoader, groundY)
+    await this.player.init()
+    
+    // Добавляем спрайт игрока в контейнер сущностей
+    if (this.player.sprite) {
+      this.entityContainer.addChild(this.player.sprite)
+    }
   }
 
   /**
@@ -106,9 +130,9 @@ export class GameController {
     }
 
     // Всегда обновляем игрока (если есть)
-    // if (this.player) {
-    //   this.player.update(deltaMS)
-    // }
+    if (this.player) {
+      this.player.update(deltaMS)
+    }
 
     // Если игра запущена
     if (this.isRunning) {
@@ -162,6 +186,12 @@ export class GameController {
     this.isRunning = true
     this.jumpingEnabled = true
     this.setState(CONSTANTS.STATES.RUNNING)
+    
+    // Переключаем игрока на анимацию бега
+    if (this.player && this.player.startRunning) {
+      this.player.startRunning()
+    }
+    
     this.emit('start')
   }
 
@@ -181,9 +211,9 @@ export class GameController {
       case CONSTANTS.STATES.RUNNING:
         if (this.jumpingEnabled && !this.isDecelerating) {
           // Прыжок игрока
-          // if (this.player) {
-          //   this.player.jump()
-          // }
+          if (this.player) {
+            this.player.jump()
+          }
           this.emit('jump')
         }
         break

@@ -73,6 +73,10 @@ export class Player {
     this.isOnGround = true
     this.isInvincible = false
     this.state = 'idle' // Текущее состояние анимации
+    this.gameStarted = false // Флаг начала игры
+    
+    // Физика прыжков
+    this.velocityY = 0 // Вертикальная скорость
     
     // Анимации
     this.animations = {
@@ -293,7 +297,7 @@ export class Player {
   }
 
   /**
-   * Переключение анимации (для будущих этапов)
+   * Переключение анимации
    */
   setAnimation(name) {
     if (!this.sprite || !this.animations[name]) return
@@ -333,12 +337,62 @@ export class Player {
   }
 
   /**
-   * Обновление игрока (для будущих этапов)
+   * Запуск игры (первое нажатие) - переключение на анимацию бега
+   */
+  startRunning() {
+    if (this.gameStarted) return
+    this.gameStarted = true
+    this.setAnimation('run')
+    console.log('🏃 Игрок начал бежать!')
+  }
+
+  /**
+   * Прыжок игрока
+   */
+  jump() {
+    if (!this.sprite) return
+    
+    // Если игра ещё не началась, запускаем бег
+    if (!this.gameStarted) {
+      this.startRunning()
+      return
+    }
+    
+    // Прыгаем только если на земле
+    if (this.isOnGround) {
+      this.velocityY = -CONSTANTS.PHYSICS.JUMP_POWER // Отрицательное значение = движение вверх
+      this.isOnGround = false
+      this.setAnimation('jump')
+      console.log('🦘 Игрок прыгнул!')
+    }
+  }
+
+  /**
+   * Обновление игрока
    * @param {number} deltaMS - Время с последнего кадра в миллисекундах
    */
   update(deltaMS) {
-    // На этапе 2 игрок статичный, поэтому ничего не делаем
-    // В будущих этапах здесь будет физика прыжков и анимации
+    if (!this.sprite || !this.gameStarted) return
+    
+    // Применяем гравитацию (deltaMS в миллисекундах, конвертируем в секунды)
+    const deltaSeconds = deltaMS / 1000
+    this.velocityY += CONSTANTS.PHYSICS.GRAVITY * deltaSeconds
+    
+    // Обновляем позицию по Y
+    this.sprite.y += this.velocityY * deltaSeconds
+    
+    // Проверка приземления
+    if (this.sprite.y >= this.y) {
+      this.sprite.y = this.y // Фиксируем на земле
+      this.velocityY = 0
+      
+      // Если приземлились после прыжка, переключаемся на бег
+      if (!this.isOnGround) {
+        this.isOnGround = true
+        this.setAnimation('run')
+        console.log('👣 Игрок приземлился!')
+      }
+    }
   }
 
   /**
@@ -366,6 +420,8 @@ export class Player {
     this.y = groundY || this.y || CONSTANTS.POSITIONS.GROUND_Y
     this.isOnGround = true
     this.isInvincible = false
+    this.gameStarted = false
+    this.velocityY = 0
     
     if (this.sprite) {
       this.setAnimation('idle')
