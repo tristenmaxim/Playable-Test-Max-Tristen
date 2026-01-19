@@ -17,11 +17,15 @@ import { TutorialOverlay } from '../ui/TutorialOverlay.js'
 import { Footer } from '../ui/Footer.js'
 import { rectanglesIntersect } from '../utils/Collision.js'
 import { SPAWN_DATA } from './spawnData.js'
+import { AudioManager } from './AudioManager.js'
 
 export class GameController {
   constructor(app, assetLoader) {
     this.app = app
     this.assetLoader = assetLoader
+
+    // Аудио менеджер
+    this.audioManager = new AudioManager(assetLoader)
 
     // Состояние игры
     this.state = CONSTANTS.STATES.LOADING
@@ -79,6 +83,11 @@ export class GameController {
    * Инициализация GameController
    */
   async init() {
+    // Инициализация аудио менеджера (должна завершиться до начала игры)
+    console.log('🔊 Начало инициализации AudioManager...')
+    await this.audioManager.init()
+    console.log('✅ AudioManager инициализирован, можно запускать музыку')
+
     // Создание контейнеров
     this.createContainers()
 
@@ -666,6 +675,9 @@ export class GameController {
     // Вызываем метод hurt у игрока (включает неуязвимость и анимацию)
     this.player.hurt()
 
+    // Воспроизводим звук столкновения
+    this.audioManager.playHit()
+
     // Эмитим событие попадания
     this.emit('hit', { hp: this.hp, entity })
 
@@ -720,6 +732,18 @@ export class GameController {
     // Переключаем игрока на анимацию бега
     if (this.player && this.player.startRunning) {
       this.player.startRunning()
+    }
+    
+    // Запускаем фоновую музыку
+    // AudioManager должен быть уже инициализирован в init()
+    if (this.audioManager && this.audioManager.loaded) {
+      // Небольшая задержка для разблокировки аудио после взаимодействия пользователя
+      setTimeout(() => {
+        console.log('🎵 Попытка запуска фоновой музыки...')
+        this.audioManager.playBGM()
+      }, 200)
+    } else {
+      console.error('❌ AudioManager не загружен! Это не должно происходить.')
     }
     
     this.emit('start')
@@ -786,6 +810,9 @@ export class GameController {
     // Паузим игру
     this.isRunning = false
     
+    // Паузим фоновую музыку
+    this.audioManager.pauseBGM()
+    
     // Останавливаем игрока (переключаем на idle)
     if (this.player && this.player.idle) {
       this.player.idle()
@@ -822,6 +849,9 @@ export class GameController {
     this.isRunning = true
     this.jumpingEnabled = true
     
+    // Возобновляем фоновую музыку
+    this.audioManager.resumeBGM()
+    
     // Возобновляем фон
     if (this.parallaxBackground && this.parallaxBackground.resume) {
       this.parallaxBackground.resume()
@@ -845,6 +875,8 @@ export class GameController {
     // Выполняем прыжок игрока (как в референсе)
     if (this.player && this.player.jump) {
       this.player.jump()
+      // Воспроизводим звук прыжка
+      this.audioManager.playJump()
     }
     
     this.emit('tutorialComplete')
@@ -880,6 +912,12 @@ export class GameController {
   handleWin() {
     // Останавливаем игру
     this.isRunning = false
+    
+    // Останавливаем фоновую музыку
+    this.audioManager.stopBGM()
+    
+    // Воспроизводим звук финала
+    this.audioManager.playFinish()
     
     // Переключаем игрока на idle анимацию при победе
     if (this.player && this.player.setAnimation) {
@@ -1045,6 +1083,9 @@ export class GameController {
     if (this.scoreDisplay) {
       this.scoreDisplay.updateScore(this.score)
     }
+
+    // Воспроизводим звук сбора коллекции
+    this.audioManager.playCollect()
 
     console.log(`✨ ${collectible.type === 'paypalCard' ? 'PayPal карта' : 'Доллар'} собран! Счёт: ${this.score}`)
 

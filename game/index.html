@@ -8,6 +8,9 @@
   <!-- GSAP CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   
+  <!-- Howler.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
+  
   <!-- Import Map для ES модулей (PixiJS v8) -->
   <script type="importmap">
     {
@@ -82,12 +85,27 @@
   <!-- Canvas будет добавлен через JavaScript -->
   
   <script type="module">
+    // Проверка загрузки Howler.js
+    function checkHowler() {
+      if (typeof Howl === 'undefined') {
+        console.error('❌ Howler.js не загружен!')
+        return false
+      }
+      console.log('✅ Howler.js загружен, версия:', Howler.version || 'unknown')
+      return true
+    }
+
     // Импорт основных модулей
     import { App } from './src/core/App.js'
 
     // Инициализация приложения
     async function init() {
       try {
+        // Проверяем Howler.js перед инициализацией
+        if (!checkHowler()) {
+          console.error('Howler.js не доступен, аудио может не работать')
+        }
+
         const app = new App()
         await app.init()
         console.log('Game initialized successfully')
@@ -98,8 +116,20 @@
       }
     }
 
-    // Запуск при загрузке страницы
-    init()
+    // Ждем загрузки Howler.js перед инициализацией
+    if (typeof Howl !== 'undefined') {
+      init()
+    } else {
+      // Если Howler еще не загружен, ждем немного
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          if (!checkHowler()) {
+            console.warn('⚠️ Howler.js все еще не загружен, продолжаем без проверки')
+          }
+          init()
+        }, 100)
+      })
+    }
   </script>
 </body>
 </html>
