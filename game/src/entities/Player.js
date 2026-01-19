@@ -72,11 +72,17 @@ export class Player {
     // Состояние (для будущих этапов)
     this.isOnGround = true
     this.isInvincible = false
+    this.invincibilityTimer = 0 // Таймер неуязвимости
     this.state = 'idle' // Текущее состояние анимации
+    this.currentAnimation = 'idle' // Текущая анимация (для проверки в update)
     this.gameStarted = false // Флаг начала игры
     
     // Физика прыжков
-    this.velocityY = 0 // Вертикальная скорость
+    this.velocityY = 0 // Вертикальная скорость (не используется для синусоидального прыжка)
+    // Синусоидальная траектория прыжка (как в референсе)
+    this.isJumping = false
+    this.jumpStartY = this.y
+    this.jumpProgress = 0
     
     // Анимации
     this.animations = {
@@ -294,6 +300,7 @@ export class Player {
 
     const oldState = this.state
     this.state = name
+    this.currentAnimation = name // Обновляем currentAnimation
 
     // Сохраняем текущий масштаб и позицию
     const scaleX = this.sprite.scale.x
@@ -315,6 +322,9 @@ export class Player {
       this.sprite.animationSpeed = 0.25
       this.sprite.loop = false
     }
+    
+    // Запускаем анимацию с начала
+    this.sprite.gotoAndPlay(0)
 
     // Восстанавливаем масштаб и позицию
     this.sprite.scale.set(scaleX, scaleY)
@@ -336,7 +346,7 @@ export class Player {
   }
 
   /**
-   * Прыжок игрока
+   * Прыжок игрока (синусоидальная траектория как в референсе)
    */
   jump() {
     if (!this.sprite) return
@@ -347,9 +357,11 @@ export class Player {
       return
     }
     
-    // Прыгаем только если на земле
-    if (this.isOnGround) {
-      this.velocityY = -CONSTANTS.PHYSICS.JUMP_POWER // Отрицательное значение = движение вверх
+    // Прыгаем только если на земле и не прыгаем уже
+    if (this.isOnGround && !this.isJumping) {
+      this.isJumping = true
+      this.jumpStartY = this.sprite.y
+      this.jumpProgress = 0
       this.isOnGround = false
       this.setAnimation('jump')
       console.log('🦘 Игрок прыгнул!')
@@ -363,29 +375,70 @@ export class Player {
   update(deltaMS) {
     if (!this.sprite || !this.gameStarted) return
     
-    // Применяем гравитацию (deltaMS в миллисекундах, конвертируем в секунды)
-    const deltaSeconds = deltaMS / 1000
-    this.velocityY += CONSTANTS.PHYSICS.GRAVITY * deltaSeconds
+    // Обновление неуязвимости
+    if (this.isInvincible) {
+      this.invincibilityTimer -= deltaMS
+      if (this.invincibilityTimer <= 0) {
+        this.isInvincible = false
+        this.invincibilityTimer = 0
+        // Восстанавливаем нормальную прозрачность
+        if (this.sprite) {
+          this.sprite.alpha = 1
+        }
+      } else {
+        // Мигание во время неуязвимости (мигание каждые 100мс)
+        if (this.sprite) {
+          const blinkRate = 100 // мс
+          this.sprite.alpha = Math.floor(this.invincibilityTimer / blinkRate) % 2 === 0 ? 0.5 : 1
+        }
+      }
+    }
     
-    // Обновляем позицию по Y
-    this.sprite.y += this.velocityY * deltaSeconds
-    
-    // Проверка приземления
-    if (this.sprite.y >= this.y) {
-      this.sprite.y = this.y // Фиксируем на земле
-      this.velocityY = 0
+    // Синусоидальная траектория прыжка (как в референсе)
+    if (this.isJumping) {
+      // Увеличиваем прогресс прыжка от 0 до 1 за JUMP_DURATION
+      this.jumpProgress += deltaMS / CONSTANTS.PHYSICS.JUMP_DURATION
       
-      // Если приземлились после прыжка, переключаемся на бег
-      if (!this.isOnGround) {
+      if (this.jumpProgress >= 1) {
+        // Прыжок завершен
+        this.isJumping = false
+        this.sprite.y = this.y // Возвращаем на землю
+        this.jumpProgress = 0
         this.isOnGround = true
-        this.setAnimation('run')
-        console.log('👣 Игрок приземлился!')
+        
+        // Переключаемся на бег если была анимация прыжка
+        if (this.state === 'jump' || this.currentAnimation === 'jump') {
+          this.setAnimation('run')
+        }
+      } else {
+        // Вычисляем позицию Y по синусоиде
+        // Формула из референса: y = jumpStartY - sin(jumpProgress * PI) * JUMP_HEIGHT
+        const jumpOffset = Math.sin(this.jumpProgress * Math.PI) * CONSTANTS.PHYSICS.JUMP_HEIGHT
+        this.sprite.y = this.jumpStartY - jumpOffset
       }
     }
   }
 
   /**
-   * Получение хитбокса для коллизий (для будущих этапов)
+   * Обработка получения урона
+   * Запускает анимацию hurt, включает неуязвимость
+   */
+  hurt() {
+    if (this.isInvincible) return // Уже неуязвим
+    
+    // Включаем неуязвимость
+    this.isInvincible = true
+    this.invincibilityTimer = CONSTANTS.HEALTH.INVINCIBILITY_DURATION
+    
+    // TODO: В будущем добавить анимацию hurt, если она есть в спрайтшите
+    // Пока просто мигание будет через update()
+    
+    console.log('💔 Игрок получил урон! Неуязвимость на', CONSTANTS.HEALTH.INVINCIBILITY_DURATION, 'мс')
+  }
+
+  /**
+   * Получение хитбокса для коллизий
+   * Основано на референсе: использует PLAYER_SCALE и PLAYER_OFFSET для уменьшения хитбокса
    * @returns {Object} Прямоугольник хитбокса
    */
   getHitbox() {
@@ -393,13 +446,28 @@ export class Player {
       return { x: 0, y: 0, width: 0, height: 0 }
     }
 
-    // Anchor (0.5, 1) означает: центр по X, низ по Y
-    // sprite.y - это позиция низа спрайта
+    // Получаем реальные границы спрайта (учитывая anchor и позицию)
+    const bounds = this.sprite.getBounds()
+    
+    // Применяем масштаб для хитбокса (из референса: PLAYER_SCALE)
+    const hitboxWidth = bounds.width * CONSTANTS.HITBOX.PLAYER_SCALE.X  // 25% ширины
+    const hitboxHeight = bounds.height * CONSTANTS.HITBOX.PLAYER_SCALE.Y  // 70% высоты
+    
+    // Вычисляем смещение для центрирования хитбокса по X
+    const offsetX = (bounds.width - hitboxWidth) / 2
+    
+    // Вычисляем смещение для позиционирования хитбокса по Y (от низа спрайта)
+    const offsetY = bounds.height - hitboxHeight
+    
+    // Применяем дополнительные смещения из референса (PLAYER_OFFSET)
+    const finalOffsetX = bounds.width * CONSTANTS.HITBOX.PLAYER_OFFSET.X  // 0
+    const finalOffsetY = bounds.height * CONSTANTS.HITBOX.PLAYER_OFFSET.Y  // -0.15 (вверх на 15%)
+    
     return {
-      x: this.sprite.x - this.sprite.width / 2,
-      y: this.sprite.y - this.sprite.height, // От низа спрайта вычитаем высоту для получения верха
-      width: this.sprite.width,
-      height: this.sprite.height
+      x: bounds.x + offsetX + finalOffsetX,
+      y: bounds.y + offsetY + finalOffsetY,
+      width: hitboxWidth,
+      height: hitboxHeight
     }
   }
 

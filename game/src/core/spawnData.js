@@ -1,63 +1,105 @@
 /**
- * Данные спавна collectibles из референса
- * Структура: { distance: число (в единицах расстояния, где 1 единица = window.innerWidth), yOffset: число }
- * 
- * ВАЖНО: Тип коллекции (dollar/paypalCard) определяется случайно в GameController (60% dollar, 40% paypalCard)
- * Здесь указываются только позиции (distance и yOffset)
+ * Данные спавна всех сущностей из референса (массив Gl)
+ * Структура: { type: 'collectible' | 'enemy' | 'obstacle' | 'finish', distance: число, yOffset?: число, ... }
  * 
  * В референсе используется система где:
- * - distance - расстояние в единицах (1 единица = yt = window.innerWidth пикселей)
+ * - distance - расстояние в единицах (1 единица = yt = window.innerWidth пикселей, обычно 720px)
  * - yOffset - смещение по Y в пикселях (положительное = выше, отрицательное = ниже)
- * - Несколько предметов могут иметь близкие расстояния для создания групп (вертикальных колонок)
+ * - pauseForTutorial - для врагов: пауза игры для показа туториала
+ * - warningLabel - для препятствий: показывать ли предупреждающую метку
+ * 
+ * ВАЖНО: 
+ * - Тип коллекции (dollar/paypalCard) определяется случайно в GameController (60% dollar, 40% paypalCard)
+ * - Данные отсортированы по distance для последовательного спавна
+ * - Все позиции фиксированы из референса (массив Gl)
  */
 
-export const COLLECTIBLE_SPAWN_DATA = [
-  // Начало игры - первые предметы (из референса)
-  { distance: 1, yOffset: 0 },
-  { distance: 2, yOffset: 0 },
+export const SPAWN_DATA = [
+  // Коллекции
+  { type: 'collectible', distance: 1.0 },
+  { type: 'collectible', distance: 2.0 },
   
-  // Группа с разными высотами (из референса: distance 4-4.8)
-  { distance: 4, yOffset: 50 },
-  { distance: 4.2, yOffset: 150 },
-  { distance: 4.4, yOffset: 250 },
-  { distance: 4.6, yOffset: 150 },
-  { distance: 4.8, yOffset: 50 },
+  // Первый враг (с туториалом)
+  { type: 'enemy', distance: 3.0, pauseForTutorial: false },
   
-  // Одиночные предметы (из референса)
-  { distance: 6.4, yOffset: 0 },
-  { distance: 7.6, yOffset: 0 },
+  // Группа коллекций с разными высотами
+  { type: 'collectible', distance: 4.0, yOffset: 50 },
+  { type: 'collectible', distance: 4.2, yOffset: 150 },
+  { type: 'collectible', distance: 4.4, yOffset: 250 },
+  { type: 'collectible', distance: 4.6, yOffset: 150 },
+  { type: 'collectible', distance: 4.8, yOffset: 50 },
   
-  // Группа с разными высотами (из референса: distance 7.8-8.6)
-  { distance: 7.8, yOffset: 100 },
-  { distance: 8, yOffset: 200 },
-  { distance: 8.2, yOffset: 280 },
-  { distance: 8.4, yOffset: 200 },
-  { distance: 8.6, yOffset: 100 },
+  // Первое препятствие
+  { type: 'obstacle', distance: 5.6, warningLabel: false },
   
-  // Продолжаем паттерн (из референса)
-  { distance: 9.6, yOffset: 0 },
-  { distance: 10.6, yOffset: 0 },
+  // Коллекции
+  { type: 'collectible', distance: 6.4 },
   
-  // Группа (из референса: distance 11-11.4)
-  { distance: 11, yOffset: 80 },
-  { distance: 11.2, yOffset: 180 },
-  { distance: 11.4, yOffset: 80 },
+  // Второй враг
+  { type: 'enemy', distance: 7.0 },
   
-  // Одиночный предмет (из референса)
-  { distance: 13, yOffset: 0 },
+  // Коллекции
+  { type: 'collectible', distance: 7.6 },
+  { type: 'collectible', distance: 7.8, yOffset: 100 },
+  { type: 'collectible', distance: 8.0, yOffset: 200 },
+  { type: 'collectible', distance: 8.2, yOffset: 280 },
+  { type: 'collectible', distance: 8.4, yOffset: 200 },
+  { type: 'collectible', distance: 8.6, yOffset: 100 },
   
-  // Группа (из референса: distance 13.2-13.6)
-  { distance: 13.2, yOffset: 100 },
-  { distance: 13.4, yOffset: 200 },
-  { distance: 13.6, yOffset: 100 },
+  // Второе препятствие
+  { type: 'obstacle', distance: 9.0, warningLabel: false },
   
-  // Одиночный предмет (из референса)
-  { distance: 14.5, yOffset: 0 },
+  // Коллекции
+  { type: 'collectible', distance: 9.6 },
   
-  // Группа (из референса: distance 15.4-16.2)
-  { distance: 15.4, yOffset: 80 },
-  { distance: 15.6, yOffset: 180 },
-  { distance: 15.8, yOffset: 260 },
-  { distance: 16, yOffset: 180 },
-  { distance: 16.2, yOffset: 80 },
+  // Третий враг
+  { type: 'enemy', distance: 10.0 },
+  
+  // Коллекции
+  { type: 'collectible', distance: 10.6 },
+  { type: 'collectible', distance: 11.0, yOffset: 80 },
+  { type: 'collectible', distance: 11.2, yOffset: 180 },
+  { type: 'collectible', distance: 11.4, yOffset: 80 },
+  
+  // Третье препятствие
+  { type: 'obstacle', distance: 12.0 },
+  
+  // Четвертый враг
+  { type: 'enemy', distance: 12.6 },
+  
+  // Коллекции
+  { type: 'collectible', distance: 13.0 },
+  { type: 'collectible', distance: 13.2, yOffset: 100 },
+  { type: 'collectible', distance: 13.4, yOffset: 200 },
+  { type: 'collectible', distance: 13.6, yOffset: 100 },
+  
+  // Четвертое препятствие
+  { type: 'obstacle', distance: 14.0, warningLabel: false },
+  
+  // Коллекции
+  { type: 'collectible', distance: 14.5 },
+  
+  // Пятый враг
+  { type: 'enemy', distance: 15.0 },
+  
+  // Группа коллекций
+  { type: 'collectible', distance: 15.4, yOffset: 80 },
+  { type: 'collectible', distance: 15.6, yOffset: 180 },
+  { type: 'collectible', distance: 15.8, yOffset: 260 },
+  { type: 'collectible', distance: 16.0, yOffset: 180 },
+  { type: 'collectible', distance: 16.2, yOffset: 80 },
+  
+  // Пятое препятствие
+  { type: 'obstacle', distance: 16.5 },
+  
+  // Финиш
+  { type: 'finish', distance: 18.0 }
 ]
+
+/**
+ * Данные спавна только коллекций (для обратной совместимости)
+ * @deprecated Используйте SPAWN_DATA вместо этого
+ */
+export const COLLECTIBLE_SPAWN_DATA = SPAWN_DATA
+  .filter(item => item.type === 'collectible')
+  .map(({ type, ...rest }) => rest) // Удаляем type, оставляем только distance и yOffset

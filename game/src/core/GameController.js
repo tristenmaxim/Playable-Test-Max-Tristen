@@ -8,8 +8,10 @@ import { CONSTANTS } from './Constants.js'
 import { ParallaxBackground } from '../entities/ParallaxBackground.js'
 import { Player } from '../entities/Player.js'
 import { Collectible } from '../entities/Collectible.js'
+import { Enemy } from '../entities/Enemy.js'
+import { Obstacle } from '../entities/Obstacle.js'
 import { rectanglesIntersect } from '../utils/Collision.js'
-import { COLLECTIBLE_SPAWN_DATA } from './spawnData.js'
+import { SPAWN_DATA } from './spawnData.js'
 
 export class GameController {
   constructor(app, assetLoader) {
@@ -35,10 +37,12 @@ export class GameController {
     // Игровые сущности
     this.player = null
     this.collectibles = [] // Массив коллекций
+    this.enemies = [] // Массив врагов
+    this.obstacles = [] // Массив препятствий
     
-    // Данные спавна коллекций из референса
+    // Единый массив данных спавна всех сущностей из референса (массив Gl)
     // Каждая запись будет помечена как spawned после спавна
-    this.collectibleSpawnData = COLLECTIBLE_SPAWN_DATA.map(data => ({
+    this.spawnData = SPAWN_DATA.map(data => ({
       ...data,
       spawned: false
     }))
@@ -120,6 +124,7 @@ export class GameController {
     
     // Позиция X: справа за экраном (как в референсе: yt + yt * 0.5)
     // где yt = 720 (единица расстояния из референса)
+    // Коллектблы будут двигаться влево синхронно с фоном
     const yt = 720
     const spawnX = window.innerWidth + yt * 0.5
     
@@ -207,43 +212,113 @@ export class GameController {
   }
 
   /**
-   * Проверка и спавн коллекций по пройденному расстоянию
-   * Использует данные из референса с правильной группировкой
+   * Проверка и спавн всех сущностей по пройденному расстоянию
+   * Использует единый массив SPAWN_DATA из референса (массив Gl)
+   * Основано на референсе: while(spawnIndex < Gl.length) { if(distanceTraveled >= distance * yt - yt) spawnEntity() }
    */
-  checkCollectibleSpawns() {
-    // В референсе используется: while(spawnIndex < Gl.length) { if(distanceTraveled >= distance * yt - yt) spawnEntity() }
-    // где yt = 720 (ширина экрана в референсе, единица расстояния)
+  checkSpawns() {
+    // В референсе используется yt = 720 (ширина экрана в референсе, единица расстояния)
     // Используем фиксированное значение для единицы расстояния (720px как в референсе)
-    // Это обеспечит консистентные расстояния между коллектблами независимо от размера экрана
     const yt = 720 // Единица расстояния в пикселях (фиксированное значение из референса)
     
     // Проверяем все записи спавна, которые ещё не заспавнены
-    // Используем цикл по всем элементам, а не только по индексу
-    for (let i = 0; i < this.collectibleSpawnData.length; i++) {
-      const data = this.collectibleSpawnData[i]
+    for (let i = 0; i < this.spawnData.length; i++) {
+      const data = this.spawnData[i]
       
       // Пропускаем уже заспавненные элементы
       if (data.spawned) continue
       
-      // Конвертируем distance из единиц в пиксели (1 единица = 800px)
+      // Конвертируем distance из единиц в пиксели
       const distanceInPixels = data.distance * yt
       
       // Если достигли нужного расстояния (как в референсе: distanceTraveled >= distance * yt - yt)
       if (this.distanceTraveled >= distanceInPixels - yt) {
-        // Спавним коллекцию
-        this.spawnCollectible(data).catch(error => {
-          console.error('Ошибка спавна коллекции:', error)
-        })
+        // Спавним сущность в зависимости от типа
+        if (data.type === 'collectible') {
+          this.spawnCollectible(data).catch(error => {
+            console.error('Ошибка спавна коллекции:', error)
+          })
+        } else if (data.type === 'enemy') {
+          this.spawnEnemy(data).catch(error => {
+            console.error('Ошибка спавна врага:', error)
+          })
+        } else if (data.type === 'obstacle') {
+          this.spawnObstacle(data).catch(error => {
+            console.error('Ошибка спавна препятствия:', error)
+          })
+        } else if (data.type === 'finish') {
+          // TODO: Реализовать спавн финиша
+          console.log('🏁 Финиш достигнут на расстоянии:', distanceInPixels)
+        }
+        
         data.spawned = true // Помечаем как заспавненную
         
         // Продолжаем проверять следующие элементы на том же расстоянии
-        // (для одновременного спавна нескольких коллекций в группе)
-      } else {
-        // Если ещё не достигли - пропускаем этот элемент, но продолжаем проверять остальные
-        // (не делаем break, чтобы проверить все элементы)
+        // (для одновременного спавна нескольких сущностей в группе)
       }
     }
   }
+
+  /**
+   * Спавн врага
+   * @param {Object} spawnData - Данные спавна { type: 'enemy' }
+   */
+  async spawnEnemy(spawnData) {
+    const groundY = this.parallaxBackground ? this.parallaxBackground.roadY : CONSTANTS.POSITIONS.GROUND_Y
+    
+    // Позиция X: справа за экраном (враг бежит навстречу игроку справа налево)
+    const yt = 720
+    const spawnX = window.innerWidth + yt * 0.5 // Справа за экраном
+    
+    // Y координата врага - на земле
+    const y = groundY
+    
+    const enemy = new Enemy(this.app, this.assetLoader, spawnX, y)
+    await enemy.init()
+    
+    // Добавляем спрайт в контейнер сущностей
+    if (enemy.sprite) {
+      this.entityContainer.addChild(enemy.sprite)
+      this.enemies.push(enemy)
+      
+      console.log(`👾 Враг создан:`, {
+        x: spawnX.toFixed(0),
+        y: y.toFixed(0),
+        groundY: groundY.toFixed(0)
+      })
+    }
+  }
+
+  /**
+   * Спавн препятствия (конус)
+   * @param {Object} spawnData - Данные спавна { type: 'obstacle' }
+   */
+  async spawnObstacle(spawnData) {
+    const groundY = this.parallaxBackground ? this.parallaxBackground.roadY : CONSTANTS.POSITIONS.GROUND_Y
+    
+    // Позиция X: справа за экраном
+    const yt = 720
+    const spawnX = window.innerWidth + yt * 0.5
+    
+    // Y координата препятствия - на земле
+    const y = groundY
+    
+    const obstacle = new Obstacle(this.app, this.assetLoader, spawnX, y)
+    await obstacle.init()
+    
+    // Добавляем контейнер препятствия в контейнер сущностей
+    if (obstacle.container) {
+      this.entityContainer.addChild(obstacle.container)
+      this.obstacles.push(obstacle)
+      
+      console.log(`🚧 Препятствие создано:`, {
+        x: spawnX.toFixed(0),
+        y: y.toFixed(0),
+        groundY: groundY.toFixed(0)
+      })
+    }
+  }
+
 
   /**
    * Создание контейнеров
@@ -294,40 +369,135 @@ export class GameController {
       // Расчёт пройденного расстояния (в пикселях)
       this.distanceTraveled += this.currentSpeed * deltaMS / 1000
 
-      // Проверка и спавн коллекций по расстоянию
-      this.checkCollectibleSpawns()
+      // Проверка и спавн всех сущностей по расстоянию (из единого массива SPAWN_DATA)
+      this.checkSpawns()
 
-      // Обновление коллекций (коллектблы статичные, стоят на месте)
+      // Обновление коллекций (движение влево синхронно с фоном)
+      // Коллекции должны двигаться с той же скоростью, что и фон
+      // Используем ту же скорость, что передаётся в ParallaxBackground.update()
+      const backgroundSpeed = this.currentSpeed
       for (let i = this.collectibles.length - 1; i >= 0; i--) {
         const collectible = this.collectibles[i]
         if (collectible.isActive && !collectible.isCollected) {
-          // Обновляем коллекцию (анимация вращения)
-          collectible.update(deltaMS, 0)
+          // Обновляем коллекцию с той же скоростью, что и фон
+          collectible.update(deltaMS, backgroundSpeed)
           
-          // Удаляем коллекции, которые ушли за левый край экрана (если они движутся)
-          // Для статичных коллектблов эта проверка не нужна, но оставляем на случай будущих изменений
-          // if (collectible.x + collectible.width < 0) {
-          //   collectible.destroy()
-          //   this.collectibles.splice(i, 1)
-          // }
+          // Удаляем коллекции, которые ушли за левый край экрана
+          if (collectible.x + collectible.width < 0) {
+            collectible.destroy()
+            this.collectibles.splice(i, 1)
+          }
         }
       }
 
       // Проверка коллизий с коллекциями
       this.checkCollectibleCollisions()
 
-      // Спавн других сущностей (враги, препятствия)
-      // this.checkSpawns()
+      // Обновление врагов (бегут навстречу игроку - движутся влево быстрее чем фон)
+      for (let i = this.enemies.length - 1; i >= 0; i--) {
+        const enemy = this.enemies[i]
+        if (enemy.isActive) {
+          enemy.update(deltaMS, backgroundSpeed)
+          
+          // Удаляем врагов, которые ушли за левый край экрана
+          if (enemy.x + enemy.width < -100) {
+            enemy.destroy()
+            this.enemies.splice(i, 1)
+          }
+        }
+      }
 
-      // Обновление других сущностей
-      // this.updateEntities(deltaMS)
+      // Обновление препятствий (движение влево синхронно с фоном)
+      for (let i = this.obstacles.length - 1; i >= 0; i--) {
+        const obstacle = this.obstacles[i]
+        if (obstacle.isActive) {
+          obstacle.update(deltaMS, backgroundSpeed)
+          
+          // Удаляем препятствия, которые ушли за левый край экрана
+          if (obstacle.x + obstacle.width < 0) {
+            obstacle.destroy()
+            this.obstacles.splice(i, 1)
+          }
+        }
+      }
 
-      // Проверка коллизий
-      // this.checkCollisions()
-
-      // Очистка сущностей за экраном
-      // this.cleanupEntities()
+      // Проверка коллизий с врагами, препятствиями и коллекциями
+      this.checkCollisions()
     }
+  }
+
+  /**
+   * Проверка всех коллизий: враги, препятствия, коллекции
+   * Основано на референсе: checkCollisions()
+   */
+  checkCollisions() {
+    if (!this.player || !this.player.sprite) return
+
+    const playerHitbox = this.player.getHitbox()
+    if (!playerHitbox) return
+
+    // Если игрок неуязвим - пропускаем проверку коллизий с врагами и препятствиями
+    // В референсе используется break, что выходит из всего метода
+    if (!this.player.isInvincible) {
+      // Проверка коллизий с врагами
+      for (const enemy of this.enemies) {
+        if (!enemy.isActive) continue
+
+        const enemyHitbox = enemy.getHitbox()
+        if (rectanglesIntersect(playerHitbox, enemyHitbox)) {
+          this.handlePlayerHit(enemy)
+          return // Прерываем после первого столкновения
+        }
+      }
+
+      // Проверка коллизий с препятствиями
+      for (const obstacle of this.obstacles) {
+        if (!obstacle.isActive) continue
+
+        const obstacleHitbox = obstacle.getHitbox()
+        if (rectanglesIntersect(playerHitbox, obstacleHitbox)) {
+          this.handlePlayerHit(obstacle)
+          return // Прерываем после первого столкновения
+        }
+      }
+    }
+
+    // Проверка коллизий с коллекциями (не зависит от неуязвимости)
+    // Используем существующий метод checkCollectibleCollisions()
+    this.checkCollectibleCollisions()
+  }
+
+  /**
+   * Обработка попадания игрока во врага/препятствие
+   * Основано на референсе: handlePlayerHit()
+   * @param {Enemy|Obstacle} entity - Сущность, с которой столкнулся игрок
+   */
+  handlePlayerHit(entity) {
+    // Проверка неуязвимости (дополнительная проверка на всякий случай)
+    if (this.player.isInvincible) return
+
+    // Уменьшаем HP
+    this.hp--
+    
+    // Вызываем метод hurt у игрока (включает неуязвимость и анимацию)
+    this.player.hurt()
+
+    // Эмитим событие попадания
+    this.emit('hit', { hp: this.hp, entity })
+
+    // Если враг - запускаем анимацию атаки
+    if (entity instanceof Enemy && entity.attack) {
+      entity.attack()
+    }
+    
+    // Примечание: препятствие (конус) уже пульсирует красным цветом постоянно
+
+    // Проверка поражения
+    if (this.hp <= 0) {
+      this.handleLose()
+    }
+
+    console.log(`💥 Столкновение с ${entity.constructor.name}! HP: ${this.hp}`)
   }
 
   /**
