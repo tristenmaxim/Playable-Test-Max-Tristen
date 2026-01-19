@@ -86,6 +86,9 @@ export class App {
         if (this.gameController.failEndScreen && this.gameController.failEndScreen.onResize) {
           this.gameController.failEndScreen.onResize()
         }
+        if (this.gameController.winEndScreen && this.gameController.winEndScreen.onResize) {
+          this.gameController.winEndScreen.onResize()
+        }
       }
     })
   }

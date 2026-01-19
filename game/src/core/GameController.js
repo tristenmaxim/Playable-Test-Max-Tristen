@@ -53,6 +53,7 @@ export class GameController {
     this.footer = null // Footer (внизу экрана)
     this.loseScreen = null // Lose Screen (экран проигрыша)
     this.failEndScreen = null // Fail End Screen (финальный экран проигрыша)
+    this.winEndScreen = null // Win End Screen (финальный экран победы)
     
     // Единый массив данных спавна всех сущностей из референса (массив Gl)
     // Каждая запись будет помечена как spawned после спавна
@@ -191,6 +192,14 @@ export class GameController {
     
     // Добавляем Fail End Screen в gameContainer (высокий z-index для отображения поверх всего)
     this.gameContainer.addChild(this.failEndScreen)
+    
+    // Инициализация Win End Screen (финальный экран победы)
+    const { WinEndScreen } = await import('../ui/WinEndScreen.js')
+    this.winEndScreen = new WinEndScreen(this.app, this.assetLoader)
+    await this.winEndScreen.init()
+    
+    // Добавляем Win End Screen в gameContainer (высокий z-index для отображения поверх всего)
+    this.gameContainer.addChild(this.winEndScreen)
     
     console.log('✅ UI элементы инициализированы')
   }
@@ -869,6 +878,7 @@ export class GameController {
    * Обработка победы
    */
   handleWin() {
+    // Останавливаем игру
     this.isRunning = false
     
     // Переключаем игрока на idle анимацию при победе
@@ -876,8 +886,43 @@ export class GameController {
       this.player.setAnimation('idle')
     }
     
+    // Паузим фон
+    if (this.parallaxBackground && this.parallaxBackground.pause) {
+      this.parallaxBackground.pause()
+    }
+    
+    // Останавливаем всех врагов
+    this.enemies.forEach(enemy => {
+      if (enemy.stop) {
+        enemy.stop()
+      }
+    })
+    
+    // Останавливаем все препятствия
+    this.obstacles.forEach(obstacle => {
+      if (obstacle.stop) {
+        obstacle.stop()
+      }
+    })
+    
+    // Переводим в состояние END_WIN
     this.setState(CONSTANTS.STATES.END_WIN)
+    
+    // Скрываем Footer (футер должен исчезнуть в конце)
+    if (this.footer) {
+      this.footer.visible = false
+      this.footer.alpha = 0
+    }
+    
+    // Показываем финальный экран победы с текущим счетом
+    if (this.winEndScreen) {
+      this.winEndScreen.show(this.score)
+    } else {
+      console.warn('⚠️ WinEndScreen не инициализирован')
+    }
+    
     this.emit('win', { score: this.score })
+    console.log('🎉 Победа! Финиш достигнут')
   }
 
   /**
