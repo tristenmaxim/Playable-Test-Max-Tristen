@@ -11,6 +11,8 @@ import { Collectible } from '../entities/Collectible.js'
 import { Enemy } from '../entities/Enemy.js'
 import { Obstacle } from '../entities/Obstacle.js'
 import { FinishLine } from '../entities/FinishLine.js'
+import { HPDisplay } from '../ui/HPDisplay.js'
+import { ScoreDisplay } from '../ui/ScoreDisplay.js'
 import { rectanglesIntersect } from '../utils/Collision.js'
 import { SPAWN_DATA } from './spawnData.js'
 
@@ -41,6 +43,10 @@ export class GameController {
     this.enemies = [] // Массив врагов
     this.obstacles = [] // Массив препятствий
     this.finishLine = null // Финишная линия
+    
+    // UI элементы
+    this.hpDisplay = null // HP Display
+    this.scoreDisplay = null // Score Display
     
     // Единый массив данных спавна всех сущностей из референса (массив Gl)
     // Каждая запись будет помечена как spawned после спавна
@@ -74,6 +80,9 @@ export class GameController {
 
     // Инициализация игрока
     await this.initPlayer()
+
+    // Инициализация UI элементов
+    await this.initUI()
 
     // Установка начального состояния
     this.setState(CONSTANTS.STATES.INTRO)
@@ -115,6 +124,33 @@ export class GameController {
     if (this.player.sprite) {
       this.entityContainer.addChild(this.player.sprite)
     }
+  }
+
+  /**
+   * Инициализация UI элементов
+   */
+  async initUI() {
+    // Инициализация HP Display
+    this.hpDisplay = new HPDisplay(this.app, this.assetLoader)
+    await this.hpDisplay.init()
+    
+    // Добавляем HP Display в gameContainer (высокий z-index)
+    this.gameContainer.addChild(this.hpDisplay)
+    
+    // Устанавливаем начальное значение HP
+    this.hpDisplay.updateHP(this.hp)
+    
+    // Инициализация Score Display
+    this.scoreDisplay = new ScoreDisplay(this.app, this.assetLoader)
+    await this.scoreDisplay.init()
+    
+    // Добавляем Score Display в gameContainer (высокий z-index)
+    this.gameContainer.addChild(this.scoreDisplay)
+    
+    // Устанавливаем начальное значение счёта
+    this.scoreDisplay.updateScore(this.score)
+    
+    console.log('✅ UI элементы инициализированы')
   }
 
   /**
@@ -556,6 +592,11 @@ export class GameController {
     // Уменьшаем HP
     this.hp--
     
+    // Обновляем HP Display
+    if (this.hpDisplay) {
+      this.hpDisplay.updateHP(this.hp)
+    }
+    
     // Вызываем метод hurt у игрока (включает неуязвимость и анимацию)
     this.player.hurt()
 
@@ -738,6 +779,11 @@ export class GameController {
 
     // Увеличиваем счёт
     this.score += collectible.value
+
+    // Обновляем Score Display
+    if (this.scoreDisplay) {
+      this.scoreDisplay.updateScore(this.score)
+    }
 
     console.log(`✨ ${collectible.type === 'paypalCard' ? 'PayPal карта' : 'Доллар'} собран! Счёт: ${this.score}`)
 

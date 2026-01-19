@@ -234,7 +234,8 @@ export class Player {
     // Референс использует фиксированный масштаб oe.SCALE = 0.54
     // НЕ пропорциональный расчет, а фиксированное значение!
     // В референсе: sprite.scale.set(oe.SCALE) где oe.SCALE = 0.54
-    const PLAYER_SCALE = 0.54 // Фиксированное значение из референса
+    // Увеличено на 15%: 0.54 * 1.15 = 0.621
+    const PLAYER_SCALE = 0.621 // Увеличен на 15% относительно референса (0.54 * 1.15)
     
     this.sprite.scale.set(PLAYER_SCALE, PLAYER_SCALE)
 
