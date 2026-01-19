@@ -20,7 +20,7 @@ export const SPAWN_DATA = [
   { type: 'collectible', distance: 2.0 },
   
   // Первый враг (с туториалом)
-  { type: 'enemy', distance: 3.0, pauseForTutorial: false },
+  { type: 'enemy', distance: 3.0, pauseForTutorial: true },
   
   // Группа коллекций с разными высотами
   { type: 'collectible', distance: 4.0, yOffset: 50 },

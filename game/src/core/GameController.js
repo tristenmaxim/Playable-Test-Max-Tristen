@@ -13,6 +13,7 @@ import { Obstacle } from '../entities/Obstacle.js'
 import { FinishLine } from '../entities/FinishLine.js'
 import { HPDisplay } from '../ui/HPDisplay.js'
 import { ScoreDisplay } from '../ui/ScoreDisplay.js'
+import { TutorialOverlay } from '../ui/TutorialOverlay.js'
 import { rectanglesIntersect } from '../utils/Collision.js'
 import { SPAWN_DATA } from './spawnData.js'
 
@@ -87,6 +88,11 @@ export class GameController {
     // Установка начального состояния
     this.setState(CONSTANTS.STATES.INTRO)
     
+    // Показываем туториал при старте (состояние INTRO)
+    if (this.tutorialOverlay) {
+      this.tutorialOverlay.show('start')
+    }
+    
     // Слушаем изменения состояния для управления фоном
     this.on('stateChange', ({ to: newState }) => {
       if (this.parallaxBackground) {
@@ -149,6 +155,13 @@ export class GameController {
     
     // Устанавливаем начальное значение счёта
     this.scoreDisplay.updateScore(this.score)
+    
+    // Инициализация Tutorial Overlay
+    this.tutorialOverlay = new TutorialOverlay(this.app, this.assetLoader)
+    await this.tutorialOverlay.init()
+    
+    // Добавляем Tutorial Overlay в gameContainer (высокий z-index)
+    this.gameContainer.addChild(this.tutorialOverlay)
     
     console.log('✅ UI элементы инициализированы')
   }
@@ -310,7 +323,7 @@ export class GameController {
 
   /**
    * Спавн врага
-   * @param {Object} spawnData - Данные спавна { type: 'enemy' }
+   * @param {Object} spawnData - Данные спавна { type: 'enemy', pauseForTutorial?: boolean }
    */
   async spawnEnemy(spawnData) {
     const groundY = this.parallaxBackground ? this.parallaxBackground.roadY : CONSTANTS.POSITIONS.GROUND_Y
@@ -330,10 +343,17 @@ export class GameController {
       this.entityContainer.addChild(enemy.sprite)
       this.enemies.push(enemy)
       
+      // Если это первый враг с pauseForTutorial, помечаем его как tutorialEnemy
+      if (spawnData.pauseForTutorial && !this.tutorialTriggered && !this.tutorialEnemy) {
+        this.tutorialEnemy = enemy
+        console.log(`🎓 Враг помечен как tutorialEnemy для паузы туториала`)
+      }
+      
       console.log(`👾 Враг создан:`, {
         x: spawnX.toFixed(0),
         y: y.toFixed(0),
-        groundY: groundY.toFixed(0)
+        groundY: groundY.toFixed(0),
+        isTutorialEnemy: enemy === this.tutorialEnemy
       })
     }
   }
@@ -536,6 +556,9 @@ export class GameController {
 
       // Проверка коллизий с врагами, препятствиями и коллекциями
       this.checkCollisions()
+      
+      // Проверка триггера туториала перед первым врагом
+      this.checkTutorialTrigger()
     }
   }
 
@@ -626,6 +649,20 @@ export class GameController {
     const oldState = this.state
     this.state = newState
     this.emit('stateChange', { from: oldState, to: newState })
+    
+    // Управление Tutorial Overlay в зависимости от состояния
+    if (this.tutorialOverlay) {
+      if (newState === CONSTANTS.STATES.INTRO) {
+        // Показываем туториал при состоянии INTRO (тип 'start')
+        this.tutorialOverlay.show('start')
+      } else if (oldState === CONSTANTS.STATES.INTRO && newState === CONSTANTS.STATES.RUNNING) {
+        // Скрываем туториал при переходе из INTRO в RUNNING
+        this.tutorialOverlay.hide()
+      } else if (oldState === CONSTANTS.STATES.PAUSED && newState === CONSTANTS.STATES.RUNNING) {
+        // Скрываем туториал при возобновлении после паузы
+        this.tutorialOverlay.hide()
+      }
+    }
   }
 
   /**
@@ -633,7 +670,8 @@ export class GameController {
    */
   start() {
     this.isRunning = true
-    this.jumpingEnabled = true
+    // Прыжки отключены до появления туториала про врага
+    this.jumpingEnabled = false
     this.setState(CONSTANTS.STATES.RUNNING)
     
     // Переключаем игрока на анимацию бега
@@ -676,13 +714,98 @@ export class GameController {
   }
 
   /**
+   * Проверка триггера туториала перед первым врагом
+   * Основано на референсе: checkTutorialTrigger()
+   */
+  checkTutorialTrigger() {
+    // Если туториал уже был показан или нет tutorialEnemy - выходим
+    if (this.tutorialTriggered || !this.tutorialEnemy || !this.player) return
+    
+    // Проверяем расстояние до tutorialEnemy
+    const distance = this.tutorialEnemy.x - this.player.x
+    
+    // Если враг приблизился на расстояние меньше PAUSE_DISTANCE и еще не прошел мимо
+    if (distance < CONSTANTS.TUTORIAL.PAUSE_DISTANCE && distance > 0) {
+      console.log(`🎓 Триггер туториала: расстояние до врага = ${distance.toFixed(0)}px`)
+      this.triggerTutorialPause('enemy')
+    }
+  }
+
+  /**
+   * Триггер паузы для показа туториала
+   * Основано на референсе: triggerTutorialPause(type)
+   * @param {string} type - Тип туториала: 'start' или 'enemy'
+   */
+  triggerTutorialPause(type) {
+    // Помечаем что туториал был показан
+    this.tutorialTriggered = true
+    
+    // Паузим игру
+    this.isRunning = false
+    
+    // Останавливаем игрока (переключаем на idle)
+    if (this.player && this.player.idle) {
+      this.player.idle()
+    }
+    
+    // Паузим фон
+    if (this.parallaxBackground && this.parallaxBackground.pause) {
+      this.parallaxBackground.pause()
+    }
+    
+    // Останавливаем всех врагов
+    this.enemies.forEach(enemy => {
+      if (enemy.stop) {
+        enemy.stop()
+      }
+    })
+    
+    // Переводим в состояние PAUSED
+    this.setState(CONSTANTS.STATES.PAUSED)
+    
+    // Показываем туториал
+    if (this.tutorialOverlay) {
+      this.tutorialOverlay.show(type)
+    }
+    
+    console.log(`⏸️ Пауза для туториала (тип: ${type})`)
+  }
+
+  /**
    * Возобновление после туториала
+   * Основано на референсе: resumeFromTutorial()
    */
   resumeFromTutorial() {
     this.isRunning = true
     this.jumpingEnabled = true
+    
+    // Возобновляем фон
+    if (this.parallaxBackground && this.parallaxBackground.resume) {
+      this.parallaxBackground.resume()
+    }
+    
+    // Запускаем игрока (переключаем на бег)
+    if (this.player && this.player.startRunning) {
+      this.player.startRunning()
+    }
+    
+    // Запускаем всех врагов
+    this.enemies.forEach(enemy => {
+      if (enemy.play) {
+        enemy.play()
+      }
+    })
+    
+    // Переводим в состояние RUNNING
     this.setState(CONSTANTS.STATES.RUNNING)
+    
+    // Выполняем прыжок игрока (как в референсе)
+    if (this.player && this.player.jump) {
+      this.player.jump()
+    }
+    
     this.emit('tutorialComplete')
+    console.log(`▶️ Возобновление после туториала, игрок прыгает`)
   }
 
   /**

@@ -77,6 +77,9 @@ export class Enemy {
     
     // Скорость анимации (увеличена для более динамичного бега)
     this.animationSpeed = 0.15
+    
+    // Флаг остановки (для паузы туториала)
+    this.isStopped = false
   }
 
   /**
@@ -282,6 +285,11 @@ export class Enemy {
   update(deltaMS, backgroundSpeed = 0) {
     if (!this.sprite || !this.isActive) return
     
+    // Если враг остановлен (пауза туториала) - не обновляем движение
+    if (this.isStopped) {
+      return
+    }
+    
     // Враг бежит навстречу игроку
     // Движется влево вместе с фоном, но дополнительно движется влево со своей скоростью
     // чтобы приближаться к игроку
@@ -329,6 +337,42 @@ export class Enemy {
       width: hitboxWidth,
       height: hitboxHeight
     }
+  }
+
+  /**
+   * Остановка врага (пауза анимации и движения)
+   * Используется при паузе туториала
+   */
+  stop() {
+    if (!this.sprite) return
+    
+    // Останавливаем анимацию
+    if (this.sprite.stop) {
+      this.sprite.stop()
+    }
+    
+    // Помечаем как остановленного
+    this.isStopped = true
+    
+    console.log('⏸️ Враг остановлен (пауза)')
+  }
+
+  /**
+   * Возобновление врага (запуск анимации и движения)
+   * Используется после паузы туториала
+   */
+  play() {
+    if (!this.sprite) return
+    
+    // Запускаем анимацию обратно
+    if (this.sprite.play) {
+      this.sprite.play()
+    }
+    
+    // Снимаем флаг остановки
+    this.isStopped = false
+    
+    console.log('▶️ Враг возобновлен')
   }
 
   /**
