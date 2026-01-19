@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "python3 -m http.server 8000",
-    "build": "node build/bundle.js"
+    "build": "node ../build/bundle.js",
+    "build:check": "node ../build/bundle.js && ls -lh ../playable_game.html"
   },
   "keywords": [
     "game",
