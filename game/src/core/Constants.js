@@ -53,6 +53,9 @@ export const CONSTANTS = {
     ENEMIES: 21,
     PLAYER: 30,  // Игрок должен быть ВЫШЕ финиша
     WARNING_LABEL: 25,
+    FOOTER: 50,      // Footer внизу экрана (выше игровых элементов, но ниже UI элементов)
+    UI_SCORE: 90,    // Score Display должен быть выше Footer
+    UI_HP: 91,       // HP Display должен быть выше Footer
     OVERLAY: 100,
     CONFETTI: 101
   },

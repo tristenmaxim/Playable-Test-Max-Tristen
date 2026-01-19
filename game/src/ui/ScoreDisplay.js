@@ -36,8 +36,8 @@ export class ScoreDisplay extends Container {
     // Подложка будет под числом, масштабируется пропорционально
     this.fixedWidth = 140 // Фиксированная ширина в пикселях (200px - 30% = 140px)
     
-    // Z-Index
-    this.zIndex = CONSTANTS.Z_INDEX.OVERLAY
+    // Z-Index (выше Footer, но ниже оверлеев)
+    this.zIndex = CONSTANTS.Z_INDEX.UI_SCORE
   }
 
   /**
@@ -45,6 +45,10 @@ export class ScoreDisplay extends Container {
    */
   async init() {
     try {
+      // Убеждаемся, что контейнер видим
+      this.visible = true
+      this.alpha = 1.0
+      
       // Сначала загружаем PayPal подложку (добавится первой, будет под текстом по z-index)
       await this.loadBackground()
       
@@ -58,6 +62,7 @@ export class ScoreDisplay extends Container {
       this.updateScore(this.currentScore)
       
       console.log('✅ Score Display инициализирован: число по центру правой части подложки')
+      console.log(`📍 Score Display позиция: x=${this.position.x.toFixed(1)}, y=${this.position.y.toFixed(1)}`)
     } catch (error) {
       console.error('❌ Ошибка инициализации Score Display:', error)
       throw error
@@ -136,6 +141,10 @@ export class ScoreDisplay extends Container {
     
     // Якорь (правый верхний угол)
     this.scoreText.anchor.set(1, 0) // Справа, сверху
+    
+    // Убеждаемся, что текст видим
+    this.scoreText.visible = true
+    this.scoreText.alpha = 1.0
     
     // Добавляем в контейнер (после подложки, чтобы был поверх по z-index)
     this.addChild(this.scoreText)

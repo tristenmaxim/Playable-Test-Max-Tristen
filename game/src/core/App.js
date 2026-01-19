@@ -69,7 +69,18 @@ export class App {
     // Обработка изменения размера окна
     window.addEventListener('resize', () => {
       initDynamicConstants()
-      // GameController обновит позиции если нужно
+      // Обновляем позиции UI элементов при изменении размера экрана
+      if (this.gameController) {
+        if (this.gameController.scoreDisplay && this.gameController.scoreDisplay.onResize) {
+          this.gameController.scoreDisplay.onResize()
+        }
+        if (this.gameController.hpDisplay && this.gameController.hpDisplay.onResize) {
+          this.gameController.hpDisplay.onResize()
+        }
+        if (this.gameController.footer && this.gameController.footer.onResize) {
+          this.gameController.footer.onResize()
+        }
+      }
     })
   }
 

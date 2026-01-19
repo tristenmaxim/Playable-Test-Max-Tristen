@@ -24,8 +24,8 @@ export class HPDisplay extends Container {
     this.spacing = 6 // Расстояние между сердечками (как в оригинале: 5-8px)
     this.padding = 15 // Отступ от края экрана (как в оригинале: ~15px)
     
-    // Z-Index
-    this.zIndex = CONSTANTS.Z_INDEX.OVERLAY
+    // Z-Index (выше Footer, но ниже оверлеев)
+    this.zIndex = CONSTANTS.Z_INDEX.UI_HP
   }
 
   /**

@@ -14,6 +14,7 @@ import { FinishLine } from '../entities/FinishLine.js'
 import { HPDisplay } from '../ui/HPDisplay.js'
 import { ScoreDisplay } from '../ui/ScoreDisplay.js'
 import { TutorialOverlay } from '../ui/TutorialOverlay.js'
+import { Footer } from '../ui/Footer.js'
 import { rectanglesIntersect } from '../utils/Collision.js'
 import { SPAWN_DATA } from './spawnData.js'
 
@@ -48,6 +49,8 @@ export class GameController {
     // UI элементы
     this.hpDisplay = null // HP Display
     this.scoreDisplay = null // Score Display
+    this.tutorialOverlay = null // Tutorial Overlay
+    this.footer = null // Footer (внизу экрана)
     
     // Единый массив данных спавна всех сущностей из референса (массив Gl)
     // Каждая запись будет помечена как spawned после спавна
@@ -162,6 +165,14 @@ export class GameController {
     
     // Добавляем Tutorial Overlay в gameContainer (высокий z-index)
     this.gameContainer.addChild(this.tutorialOverlay)
+    
+    // Инициализация Footer
+    this.footer = new Footer(this.app, this.assetLoader)
+    await this.footer.init()
+    
+    // Добавляем Footer в gameContainer ПОСЛЕ ScoreDisplay, чтобы ScoreDisplay был выше по z-index
+    // Footer должен быть ниже ScoreDisplay, чтобы не перекрывать счет
+    this.gameContainer.addChild(this.footer)
     
     console.log('✅ UI элементы инициализированы')
   }
