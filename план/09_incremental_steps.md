@@ -583,7 +583,7 @@
   ↓
 Этап 15: UI - Score Display ✅
   ↓
-Этап 16: UI - Tutorial
+Этап 16: UI - Tutorial Overlay ✅
   ↓
 Этап 17: UI - End Screens
   ↓
