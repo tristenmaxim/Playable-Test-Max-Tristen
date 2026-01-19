@@ -49,6 +49,9 @@ export class ScoreDisplay extends Container {
       this.visible = true
       this.alpha = 1.0
       
+      // Ждем загрузки шрифта GameFont перед созданием текста
+      await this.ensureFontLoaded()
+      
       // Сначала загружаем PayPal подложку (добавится первой, будет под текстом по z-index)
       await this.loadBackground()
       
@@ -66,6 +69,22 @@ export class ScoreDisplay extends Container {
     } catch (error) {
       console.error('❌ Ошибка инициализации Score Display:', error)
       throw error
+    }
+  }
+
+  /**
+   * Убеждаемся, что шрифт GameFont загружен
+   */
+  async ensureFontLoaded() {
+    // Ждем готовности всех шрифтов (включая CSS @font-face)
+    await document.fonts.ready
+    
+    // Проверяем, что GameFont доступен
+    const isLoaded = document.fonts.check('12px GameFont')
+    if (!isLoaded) {
+      console.warn('⚠️ GameFont не загружен, используем fallback')
+    } else {
+      console.log('✅ GameFont готов к использованию')
     }
   }
 
@@ -122,8 +141,9 @@ export class ScoreDisplay extends Container {
    */
   createScoreText() {
     // Стиль для текста счёта (темно-синий цвет PayPal, размер 28px)
+    // Используем GameFont (asset_0045.ttf), как везде в игре
     const textStyle = new TextStyle({
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'GameFont, sans-serif',
       fontSize: this.fontSize, // 28px
       fill: 0x003087, // Темно-синий цвет PayPal
       align: 'right',
@@ -132,6 +152,9 @@ export class ScoreDisplay extends Container {
     
     // Создаём текстовый спрайт
     this.scoreText = new Text('$0', textStyle)
+    
+    // Убеждаемся, что используется GameFont
+    this.scoreText.style.fontFamily = 'GameFont, sans-serif'
     
     // Позиционируем текст с отступом от правого края контейнера
     // Отступ нужен для того, чтобы число было с внутренним отступом от правого края подложки
@@ -192,7 +215,24 @@ export class ScoreDisplay extends Container {
     
     // Обновляем текст
     if (this.scoreText) {
+      // Принудительно обновляем стиль ПЕРЕД изменением текста
+      // Это гарантирует, что GameFont будет использоваться при пересоздании текстуры
+      if (this.scoreText.style) {
+        this.scoreText.style.fontFamily = 'GameFont, sans-serif'
+      }
+      
+      // Изменяем текст (это может пересоздать текстуру)
       this.scoreText.text = formattedScore
+      
+      // Принудительно обновляем стиль ПОСЛЕ изменения текста
+      // PixiJS может пересоздать текстуру при изменении текста, поэтому нужно обновить стиль снова
+      if (this.scoreText.style) {
+        this.scoreText.style.fontFamily = 'GameFont, sans-serif'
+      }
+      
+      // Также обновляем через прямое свойство style для надежности
+      this.scoreText.style = this.scoreText.style || {}
+      this.scoreText.style.fontFamily = 'GameFont, sans-serif'
     }
     
     // Анимация при увеличении счёта
@@ -217,6 +257,11 @@ export class ScoreDisplay extends Container {
     const animate = (deltaMS) => {
       elapsed += deltaMS
       
+      // Убеждаемся, что стиль не сбросился во время анимации
+      if (this.scoreText && this.scoreText.style) {
+        this.scoreText.style.fontFamily = 'GameFont, sans-serif'
+      }
+      
       if (elapsed < duration) {
         const progress = elapsed / duration
         
@@ -232,6 +277,11 @@ export class ScoreDisplay extends Container {
       } else {
         this.scoreText.scale.set(originalScale)
         this.app.ticker.remove(animate)
+        
+        // Финальная проверка стиля после анимации
+        if (this.scoreText && this.scoreText.style) {
+          this.scoreText.style.fontFamily = 'GameFont, sans-serif'
+        }
       }
     }
     
