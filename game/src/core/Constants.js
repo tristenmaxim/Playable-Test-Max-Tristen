@@ -6,7 +6,11 @@
 export const CONSTANTS = {
   // Скорость игры
   SPEED: {
-    BASE: 200,              // Базовая скорость (будет уточнено при тестировании)
+    // Референс: Ye.BASE_SPEED = 600 (из script_00_module.js)
+    // Но для достижения первой монетки (720px) за 2.85 секунды нужна скорость 252.63 px/s
+    // Формула в оригинале: distanceTraveled += currentSpeed * deltaMS / 1000
+    // Фон и сущности движутся с той же скоростью: deltaX = speed * deltaMS / 1000
+    BASE: 252.63,            // Скорость для достижения первой монетки за 2.85 секунды (720px / 2.85s ≈ 252.63px/s)
     DECELERATION_RATE: 0.9,  // Коэффициент замедления перед финишем
     MIN: 10                  // Минимальная скорость
   },
@@ -36,16 +40,18 @@ export const CONSTANTS = {
   },
 
   // Z-Index слоёв
+  // Референс: FINISH_LINE = 35, PLAYER = 70 (финиш ПОД игроком!)
   Z_INDEX: {
     FAR_BACKGROUND: 0,
     MID_BACKGROUND: 1,
     NEAR_BACKGROUND: 2,
     GROUND: 10,
-    PLAYER: 20,
-    ENEMIES: 21,
+    FINISH_LINE_GROUND: 15,  // Шахматная доска финиша должна быть под игроком
+    COLLECTIBLES: 20,
     OBSTACLES: 22,
-    COLLECTIBLES: 23,
-    FINISH_LINE: 24,
+    FINISH_LINE: 24,  // Столбы и лента финиша (но все равно под игроком)
+    ENEMIES: 21,
+    PLAYER: 30,  // Игрок должен быть ВЫШЕ финиша
     WARNING_LABEL: 25,
     OVERLAY: 100,
     CONFETTI: 101

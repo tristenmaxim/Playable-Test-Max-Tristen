@@ -69,6 +69,7 @@ export class Obstacle {
    * asset_0007.webp - при столкновении
    */
   async loadTextures() {
+    // Путь относительно game/index.html (один уровень вверх)
     const normalPath = '../reference/reference_assets/data_uri_assets/asset_0006.webp'
     const hitPath = '../reference/reference_assets/data_uri_assets/asset_0007.webp'
     
@@ -101,21 +102,28 @@ export class Obstacle {
     // Создаём контейнер для обоих спрайтов
     this.container = new Container()
     
-    // Масштабирование для правильного размера
-    const targetHeight = 60 // Примерная высота конуса
-    const currentHeight = this.normalTexture.height
-    const scale = targetHeight / currentHeight
+    // Масштабирование из оригинала: Mt.BASE_SCALE = 0.8
+    // Референс: this.sprite.scale.set(Mt.BASE_SCALE)
+    // Уменьшаем масштаб для правильного размера препятствия
+    const OBSTACLE_SCALE = 0.4 // Уменьшено с 0.8 для правильного размера
+    
+    // Логируем размеры ДО масштабирования
+    const normalOriginalWidth = this.normalTexture.width
+    const normalOriginalHeight = this.normalTexture.height
+    const hitOriginalWidth = this.hitTexture.width
+    const hitOriginalHeight = this.hitTexture.height
     
     // Красный конус (сзади, пульсирует)
     this.redSprite = new Sprite(this.hitTexture)
     this.redSprite.anchor.set(0.5, 1)
-    this.redSprite.scale.set(scale, scale)
+    this.redSprite.scale.set(OBSTACLE_SCALE, OBSTACLE_SCALE)
+    this.redSprite.alpha = 0.8 // Из референса: this.glowSprite.alpha = 0.8
     this.redSprite.zIndex = this.zIndex - 1 // Сзади обычного конуса
     
     // Обычный конус (спереди)
     this.sprite = new Sprite(this.normalTexture)
     this.sprite.anchor.set(0.5, 1)
-    this.sprite.scale.set(scale, scale)
+    this.sprite.scale.set(OBSTACLE_SCALE, OBSTACLE_SCALE)
     this.sprite.zIndex = this.zIndex
     
     // Добавляем спрайты в контейнер (красный сзади, обычный спереди)
@@ -125,14 +133,16 @@ export class Obstacle {
     // Z-Index для контейнера
     this.container.zIndex = this.zIndex
     
-    // Сохраняем размеры для коллизий
+    // Сохраняем размеры для коллизий (после масштабирования)
     this.width = this.sprite.width
     this.height = this.sprite.height
     
     console.log(`✅ Спрайт препятствия создан (с пульсацией):`, {
-      width: this.sprite.width,
-      height: this.sprite.height,
-      scale
+      normalOriginalSize: `${normalOriginalWidth}x${normalOriginalHeight}`,
+      hitOriginalSize: `${hitOriginalWidth}x${hitOriginalHeight}`,
+      finalSize: `${this.width.toFixed(1)}x${this.height.toFixed(1)}`,
+      scale: OBSTACLE_SCALE,
+      expectedSize: `${(normalOriginalWidth * OBSTACLE_SCALE).toFixed(1)}x${(normalOriginalHeight * OBSTACLE_SCALE).toFixed(1)}`
     })
   }
 

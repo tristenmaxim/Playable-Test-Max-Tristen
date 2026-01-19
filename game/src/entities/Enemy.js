@@ -207,14 +207,19 @@ export class Enemy {
     // Anchor: низ по центру (0.5, 1) - как у игрока
     this.sprite.anchor.set(0.5, 1)
     
-    // Масштабирование: враг должен быть меньше игрока
-    // Попробуем масштаб 0.4 (примерно на 25% меньше чем игрок с масштабом 0.54)
-    const ENEMY_SCALE = 0.4 // Меньше чем у игрока (0.54)
-    this.sprite.scale.set(ENEMY_SCALE, ENEMY_SCALE)
+    // Масштабирование из оригинала: oe.SCALE * 1.3 = 0.54 * 1.3 = 0.702
+    // Референс: const r=oe.SCALE*1.3;this.sprite.scale.set(-r,r)
+    // Уменьшаем масштаб, так как враг должен быть меньше игрока
+    const PLAYER_SCALE = 0.54 // Из референса: oe.SCALE
+    const ENEMY_SCALE = PLAYER_SCALE * 0.8 // Уменьшено: враг должен быть меньше игрока (0.54 * 0.8 = 0.432)
+    
+    // Логируем размеры ДО масштабирования
+    const originalWidth = this.sprite.width
+    const originalHeight = this.sprite.height
     
     // Зеркальное отражение: враг должен смотреть влево (к игроку)
-    // Используем scale.x = -1 для горизонтального отражения
-    this.sprite.scale.x = -ENEMY_SCALE // Отрицательный масштаб по X для отражения
+    // Отрицательный масштаб по X для отражения, положительный по Y
+    this.sprite.scale.set(-ENEMY_SCALE, ENEMY_SCALE)
     
     // Сохраняем размеры для коллизий (после масштабирования)
     this.width = Math.abs(this.sprite.width) // Абсолютное значение, т.к. scale.x отрицательный
@@ -224,11 +229,10 @@ export class Enemy {
     this.sprite.zIndex = this.zIndex
     
     console.log(`✅ Спрайт врага настроен:`, {
-      width: this.width,
-      height: this.height,
-      scaleX: this.sprite.scale.x,
-      scaleY: this.sprite.scale.y,
-      anchor: { x: this.sprite.anchor.x, y: this.sprite.anchor.y }
+      originalSize: `${originalWidth}x${originalHeight}`,
+      finalSize: `${this.width.toFixed(1)}x${this.height.toFixed(1)}`,
+      scale: ENEMY_SCALE,
+      expectedSize: `${(originalWidth * ENEMY_SCALE).toFixed(1)}x${(originalHeight * ENEMY_SCALE).toFixed(1)}`
     })
   }
 

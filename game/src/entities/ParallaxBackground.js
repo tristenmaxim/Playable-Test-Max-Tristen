@@ -128,13 +128,22 @@ export class ParallaxBackground extends Container {
     const textureHeight = this.bgTexture.height
 
     // Из референса: const t=$e/this.bgTexture.width, A=Me/this.bgTexture.height
-    // Референс: $e=window.innerWidth, Me=1280 (фиксированное значение)
+    // Референс: $e=window.innerWidth, Me=1280 (фиксированное значение для референса)
     // Для адаптации к разным размерам экрана используем текущую высоту экрана
+    // Референс использует Math.max(scaleX, scaleY) для покрытия всего экрана
     const scaleX = screenWidth / textureWidth
-    const scaleY = screenHeight / textureHeight
-    // В референсе: bgScale = Math.max(scaleX, scaleY)
-    // Используем текущие размеры экрана для адаптации
+    const scaleY = screenHeight / textureHeight // Используем текущую высоту экрана для адаптации
+    // В референсе: bgScale = Math.max(scaleX, scaleY) - берется максимальный масштаб для покрытия экрана
     this.bgScale = Math.max(scaleX, scaleY)
+    
+    console.log(`📏 Масштабирование фона:`, {
+      textureSize: `${textureWidth}x${textureHeight}`,
+      screenSize: `${screenWidth}x${screenHeight}`,
+      scaleX: scaleX.toFixed(3),
+      scaleY: scaleY.toFixed(3),
+      bgScale: this.bgScale.toFixed(3),
+      note: 'Используется текущая высота экрана для адаптации'
+    })
     
     // Из референса: const r=this.bgTexture.width*this.bgScale
     const tileWidth = textureWidth * this.bgScale

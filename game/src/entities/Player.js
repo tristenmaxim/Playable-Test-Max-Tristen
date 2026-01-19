@@ -373,7 +373,10 @@ export class Player {
    * @param {number} deltaMS - Время с последнего кадра в миллисекундах
    */
   update(deltaMS) {
-    if (!this.sprite || !this.gameStarted) return
+    // Обновляем только если игра началась и спрайт существует
+    // Если состояние idle - тоже обновляем (для анимации idle)
+    if (!this.sprite) return
+    if (!this.gameStarted && this.state !== 'idle') return
     
     // Обновление неуязвимости
     if (this.isInvincible) {

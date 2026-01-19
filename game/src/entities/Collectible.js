@@ -101,16 +101,20 @@ export class Collectible {
     // Anchor: центр (0.5, 0.5) для вращения вокруг центра
     this.sprite.anchor.set(0.5, 0.5)
     
-    // Масштабирование для правильного размера
-    // Референс: Te.COLLECTIBLE_RADIUS = 60px - это радиус для хитбокса (диаметр = 120px)
-    // Но визуальный размер должен быть меньше - примерно 40-45px в диаметре
-    // (как было изначально, до увеличения)
-    const targetSize = 42  // Визуальный размер коллектбла (диаметр) - изначальный размер
-    const currentSize = Math.max(this.sprite.width, this.sprite.height)
-    const scale = targetSize / currentSize
+    // Масштабирование из оригинала: baseScale = 0.15
+    // Референс: const n=A==="dollar"?this.baseScale:this.baseScale*1.2;this.sprite.scale.set(n)
+    // Уменьшаем масштаб, так как текстуры могут быть большими
+    const BASE_SCALE = 0.08 // Уменьшено с 0.15 для правильного размера
+    const scale = this.type === 'paypalCard' ? BASE_SCALE * 1.2 : BASE_SCALE
+    // Доллар: 0.08, PayPal карта: 0.08 * 1.2 = 0.096
+    
+    // Логируем размеры ДО масштабирования
+    const originalWidth = this.texture.width
+    const originalHeight = this.texture.height
+    
     this.sprite.scale.set(scale, scale)
     
-    // Сохраняем размеры для коллизий
+    // Сохраняем размеры для коллизий (после масштабирования)
     this.width = this.sprite.width
     this.height = this.sprite.height
     
@@ -118,9 +122,10 @@ export class Collectible {
     this.sprite.zIndex = this.zIndex
     
     console.log(`✅ Спрайт коллекции (${this.type}) создан:`, {
-      width: this.sprite.width,
-      height: this.sprite.height,
-      scale
+      originalSize: `${originalWidth}x${originalHeight}`,
+      finalSize: `${this.width.toFixed(1)}x${this.height.toFixed(1)}`,
+      scale: scale,
+      expectedSize: `${(originalWidth * scale).toFixed(1)}x${(originalHeight * scale).toFixed(1)}`
     })
   }
 

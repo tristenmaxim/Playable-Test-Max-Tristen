@@ -10,6 +10,7 @@ import { Player } from '../entities/Player.js'
 import { Collectible } from '../entities/Collectible.js'
 import { Enemy } from '../entities/Enemy.js'
 import { Obstacle } from '../entities/Obstacle.js'
+import { FinishLine } from '../entities/FinishLine.js'
 import { rectanglesIntersect } from '../utils/Collision.js'
 import { SPAWN_DATA } from './spawnData.js'
 
@@ -39,6 +40,7 @@ export class GameController {
     this.collectibles = [] // Массив коллекций
     this.enemies = [] // Массив врагов
     this.obstacles = [] // Массив препятствий
+    this.finishLine = null // Финишная линия
     
     // Единый массив данных спавна всех сущностей из референса (массив Gl)
     // Каждая запись будет помечена как spawned после спавна
@@ -233,6 +235,16 @@ export class GameController {
       
       // Если достигли нужного расстояния (как в референсе: distanceTraveled >= distance * yt - yt)
       if (this.distanceTraveled >= distanceInPixels - yt) {
+        // Отладочный лог для финиша
+        if (data.type === 'finish') {
+          console.log(`🏁 Проверка спавна финиша:`, {
+            distanceTraveled: this.distanceTraveled.toFixed(0),
+            distanceInPixels: distanceInPixels.toFixed(0),
+            threshold: (distanceInPixels - yt).toFixed(0),
+            shouldSpawn: this.distanceTraveled >= distanceInPixels - yt
+          })
+        }
+        
         // Спавним сущность в зависимости от типа
         if (data.type === 'collectible') {
           this.spawnCollectible(data).catch(error => {
@@ -247,8 +259,9 @@ export class GameController {
             console.error('Ошибка спавна препятствия:', error)
           })
         } else if (data.type === 'finish') {
-          // TODO: Реализовать спавн финиша
-          console.log('🏁 Финиш достигнут на расстоянии:', distanceInPixels)
+          this.spawnFinishLine(data).catch(error => {
+            console.error('Ошибка спавна финиша:', error)
+          })
         }
         
         data.spawned = true // Помечаем как заспавненную
@@ -319,6 +332,51 @@ export class GameController {
     }
   }
 
+  /**
+   * Спавн финишной линии
+   * @param {Object} spawnData - Данные спавна { type: 'finish' }
+   */
+  async spawnFinishLine(spawnData) {
+    const groundY = this.parallaxBackground ? this.parallaxBackground.roadY : CONSTANTS.POSITIONS.GROUND_Y
+    
+    // Позиция X: справа за экраном
+    const yt = 720
+    const spawnX = window.innerWidth + yt * 0.5
+    
+    // Y координата финиша - на земле
+    const y = groundY
+    
+    const finishLine = new FinishLine(this.app, this.assetLoader, spawnX, y)
+    await finishLine.init()
+    
+    // Устанавливаем ссылку на игрока для проверки достижения ленты
+    finishLine.setPlayer(this.player)
+    
+    // Добавляем контейнер финиша в контейнер сущностей
+    if (finishLine.container) {
+      this.entityContainer.addChild(finishLine.container)
+      finishLine.isActive = true
+      this.finishLine = finishLine
+      
+      console.log(`🏁 Финишная линия создана:`, {
+        x: spawnX.toFixed(0),
+        y: y.toFixed(0),
+        groundY: groundY.toFixed(0),
+        tapeBreakX: finishLine.tapeBreakX.toFixed(0),
+        container: finishLine.container ? '✅' : '❌',
+        sprite: finishLine.sprite ? '✅' : '❌',
+        tapeSprite: finishLine.tapeSprite ? '✅' : '❌',
+        isActive: finishLine.isActive,
+        containerVisible: finishLine.container?.visible,
+        containerAlpha: finishLine.container?.alpha,
+        containerX: finishLine.container?.x?.toFixed(0),
+        containerY: finishLine.container?.y?.toFixed(0),
+        spriteX: finishLine.sprite?.x?.toFixed(0),
+        spriteY: finishLine.sprite?.y?.toFixed(0)
+      })
+    }
+  }
+
 
   /**
    * Создание контейнеров
@@ -367,7 +425,16 @@ export class GameController {
       }
 
       // Расчёт пройденного расстояния (в пикселях)
-      this.distanceTraveled += this.currentSpeed * deltaMS / 1000
+      // Формула: расстояние = скорость * время
+      // speed в пикселях/сек, deltaMS в миллисекундах, делим на 1000 для получения секунд
+      const distanceDelta = this.currentSpeed * deltaMS / 1000
+      this.distanceTraveled += distanceDelta
+      
+      // Отладочный лог для первой монетки (distance: 1.0 = 720px)
+      if (this.distanceTraveled < 800 && Math.floor(this.distanceTraveled / 100) !== Math.floor((this.distanceTraveled - distanceDelta) / 100)) {
+        const timeToFirstCoin = 720 / this.currentSpeed // Время до первой монетки в секундах
+        console.log(`📏 Пройдено: ${this.distanceTraveled.toFixed(0)}px, скорость: ${this.currentSpeed.toFixed(0)}px/сек, время до первой монетки: ${timeToFirstCoin.toFixed(1)}сек`)
+      }
 
       // Проверка и спавн всех сущностей по расстоянию (из единого массива SPAWN_DATA)
       this.checkSpawns()
@@ -418,6 +485,16 @@ export class GameController {
             obstacle.destroy()
             this.obstacles.splice(i, 1)
           }
+        }
+      }
+
+      // Обновление финишной линии (движение влево синхронно с фоном)
+      if (this.finishLine && this.finishLine.isActive) {
+        this.finishLine.update(deltaMS, backgroundSpeed)
+        
+        // Проверка разрыва ленты и запуск замедления
+        if (this.finishLine.isBroken && !this.isDecelerating) {
+          this.startDeceleration()
         }
       }
 
@@ -568,10 +645,39 @@ export class GameController {
   }
 
   /**
+   * Запуск замедления перед финишем
+   * Вызывается когда игрок разрывает ленту финиша
+   */
+  startDeceleration() {
+    if (this.isDecelerating) return
+    
+    this.isDecelerating = true
+    
+    // Если финиш ещё не разорван, разрываем его
+    if (this.finishLine && !this.finishLine.isBroken) {
+      this.finishLine.breakTape()
+    }
+    
+    // Переключаем игрока на idle анимацию при замедлении
+    if (this.player && this.player.setAnimation) {
+      this.player.setAnimation('idle')
+    }
+    
+    this.emit('crossedFinish')
+    console.log('🏁 Замедление запущено!')
+  }
+
+  /**
    * Обработка победы
    */
   handleWin() {
     this.isRunning = false
+    
+    // Переключаем игрока на idle анимацию при победе
+    if (this.player && this.player.setAnimation) {
+      this.player.setAnimation('idle')
+    }
+    
     this.setState(CONSTANTS.STATES.END_WIN)
     this.emit('win', { score: this.score })
   }
