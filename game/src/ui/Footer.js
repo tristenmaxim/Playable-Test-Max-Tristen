@@ -3,7 +3,7 @@
  * Использует asset_0039.webp (портретная) и asset_0040.webp (альбомная)
  */
 
-import { Container, Sprite, Graphics, Text, TextStyle } from 'pixi.js'
+import { Container, Sprite, Graphics, Text, TextStyle, Rectangle } from 'pixi.js'
 import { CONSTANTS } from '../core/Constants.js'
 
 export class Footer extends Container {
@@ -257,7 +257,8 @@ export class Footer extends Container {
     buttonText.y = 0 // Центр, так как pivot уже установлен
     
     // Устанавливаем hitArea для интерактивности (весь размер кнопки, относительно центра)
-    buttonContainer.hitArea = { x: -halfWidth, y: -halfHeight, width: buttonWidth, height: buttonHeight }
+    // Используем Rectangle из PixiJS, который имеет метод contains
+    buttonContainer.hitArea = new Rectangle(-halfWidth, -halfHeight, buttonWidth, buttonHeight)
     
     // Убеждаемся, что все элементы видимы
     buttonBg.visible = true

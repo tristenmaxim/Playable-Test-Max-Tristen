@@ -3,7 +3,7 @@
  * Отображает asset_0041.png при проигрыше
  */
 
-import { Container, Sprite } from 'pixi.js'
+import { Container, Sprite, Graphics } from 'pixi.js'
 import { CONSTANTS } from '../core/Constants.js'
 
 export class LoseScreen extends Container {
@@ -12,6 +12,9 @@ export class LoseScreen extends Container {
     
     this.app = app
     this.assetLoader = assetLoader
+    
+    // Затемненный фон (Graphics)
+    this.darkOverlay = null
     
     // Спрайт экрана проигрыша
     this.loseSprite = null
@@ -23,6 +26,11 @@ export class LoseScreen extends Container {
     this.animationTicker = null
     this.animationStartTime = 0
     this.animationDuration = 500 // 500ms
+    
+    // Анимация затемнения
+    this.darkOverlayTicker = null
+    this.darkOverlayStartTime = 0
+    this.darkOverlayDuration = 300 // 300ms для затемнения
     
     // Z-Index (выше всех игровых элементов)
     this.zIndex = CONSTANTS.Z_INDEX.OVERLAY
@@ -40,6 +48,9 @@ export class LoseScreen extends Container {
    */
   async init() {
     try {
+      // Создаем затемненный фон
+      this.createDarkOverlay()
+      
       // Загружаем текстуру экрана проигрыша
       await this.loadTexture()
       
@@ -54,6 +65,36 @@ export class LoseScreen extends Container {
       console.error('❌ Ошибка инициализации Lose Screen:', error)
       throw error
     }
+  }
+
+  /**
+   * Создание затемненного фона (Graphics)
+   */
+  createDarkOverlay() {
+    const screenWidth = this.app.screen.width
+    const screenHeight = this.app.screen.height
+    
+    // Создаем Graphics элемент для затемнения
+    this.darkOverlay = new Graphics()
+    
+    // Рисуем черный прямоугольник на весь экран
+    // Используем альфа-канал для прозрачности (0.7 = 70% непрозрачности)
+    this.darkOverlay.rect(0, 0, screenWidth, screenHeight)
+    this.darkOverlay.fill({ color: 0x000000, alpha: 0.7 })
+    
+    // Позиционируем в начале координат контейнера
+    this.darkOverlay.x = -screenWidth / 2
+    this.darkOverlay.y = -screenHeight / 2
+    
+    // Z-Index: затемнение должно быть под картинкой
+    this.darkOverlay.zIndex = this.zIndex - 1
+    
+    // Изначально невидим
+    this.darkOverlay.visible = false
+    this.darkOverlay.alpha = 0
+    
+    // Добавляем в контейнер ПЕРВЫМ, чтобы был под картинкой
+    this.addChild(this.darkOverlay)
   }
 
   /**
@@ -130,6 +171,20 @@ export class LoseScreen extends Container {
     // Позиционируем контейнер в центре экрана
     this.position.set(screenWidth / 2, screenHeight / 2)
     
+    // Обновляем затемненный фон при изменении размера экрана
+    if (this.darkOverlay) {
+      // Очищаем предыдущий рисунок
+      this.darkOverlay.clear()
+      
+      // Рисуем новый прямоугольник с новыми размерами
+      this.darkOverlay.rect(0, 0, screenWidth, screenHeight)
+      this.darkOverlay.fill({ color: 0x000000, alpha: 0.7 })
+      
+      // Обновляем позицию
+      this.darkOverlay.x = -screenWidth / 2
+      this.darkOverlay.y = -screenHeight / 2
+    }
+    
     // Обновляем целевой масштаб при изменении размера экрана
     if (this.loseSprite && this.loseTexture) {
       const scaleX = screenWidth / this.loseTexture.width
@@ -140,9 +195,10 @@ export class LoseScreen extends Container {
   }
 
   /**
-   * Показ экрана проигрыша с анимацией расширения
+   * Показ экрана проигрыша с анимацией расширения и затемнения
+   * @param {Function} onComplete - Callback, вызываемый после завершения анимации расширения
    */
-  show() {
+  show(onComplete = null) {
     this.visible = true
     this.alpha = 1.0
     this.updatePosition()
@@ -156,10 +212,43 @@ export class LoseScreen extends Container {
     this.loseSprite.visible = true
     this.loseSprite.alpha = 1.0
     
-    // Останавливаем предыдущую анимацию, если она была
+    // Показываем затемненный фон
+    if (this.darkOverlay) {
+      this.darkOverlay.visible = true
+    }
+    
+    // Останавливаем предыдущие анимации, если они были
     if (this.animationTicker) {
       this.app.ticker.remove(this.animationTicker)
       this.animationTicker = null
+    }
+    
+    if (this.darkOverlayTicker) {
+      this.app.ticker.remove(this.darkOverlayTicker)
+      this.darkOverlayTicker = null
+    }
+    
+    // Анимация затемнения экрана
+    this.darkOverlayStartTime = Date.now()
+    this.darkOverlayTicker = (ticker) => {
+      const elapsed = Date.now() - this.darkOverlayStartTime
+      const progress = Math.min(elapsed / this.darkOverlayDuration, 1)
+      
+      // Плавное появление затемнения (ease-out)
+      const easedProgress = 1 - Math.pow(1 - progress, 2) // quadratic ease-out
+      
+      if (this.darkOverlay) {
+        this.darkOverlay.alpha = easedProgress * 1.0 // От 0 до 1.0
+      }
+      
+      if (progress >= 1) {
+        // Затемнение завершено
+        if (this.darkOverlay) {
+          this.darkOverlay.alpha = 1.0
+        }
+        this.app.ticker.remove(this.darkOverlayTicker)
+        this.darkOverlayTicker = null
+      }
     }
     
     // Анимация расширения от центра
@@ -186,13 +275,19 @@ export class LoseScreen extends Container {
         // Удаляем ticker
         this.app.ticker.remove(this.animationTicker)
         this.animationTicker = null
+        
+        // Вызываем callback после завершения анимации расширения
+        if (onComplete) {
+          onComplete()
+        }
       }
     }
     
-    // Добавляем анимацию в ticker
+    // Добавляем анимации в ticker
+    this.app.ticker.add(this.darkOverlayTicker)
     this.app.ticker.add(this.animationTicker)
     
-    console.log('📺 Lose Screen показан с анимацией', {
+    console.log('📺 Lose Screen показан с анимацией затемнения и расширения', {
       visible: this.visible,
       alpha: this.alpha,
       targetScale: this.targetScale.toFixed(3),
@@ -206,10 +301,21 @@ export class LoseScreen extends Container {
    * Скрытие экрана проигрыша
    */
   hide() {
-    // Останавливаем анимацию, если она активна
+    // Останавливаем анимации, если они активны
     if (this.animationTicker) {
       this.app.ticker.remove(this.animationTicker)
       this.animationTicker = null
+    }
+    
+    if (this.darkOverlayTicker) {
+      this.app.ticker.remove(this.darkOverlayTicker)
+      this.darkOverlayTicker = null
+    }
+    
+    // Скрываем затемненный фон
+    if (this.darkOverlay) {
+      this.darkOverlay.visible = false
+      this.darkOverlay.alpha = 0
     }
     
     this.visible = false
@@ -221,10 +327,21 @@ export class LoseScreen extends Container {
    * Уничтожение компонента
    */
   destroy() {
-    // Останавливаем анимацию
+    // Останавливаем анимации
     if (this.animationTicker) {
       this.app.ticker.remove(this.animationTicker)
       this.animationTicker = null
+    }
+    
+    if (this.darkOverlayTicker) {
+      this.app.ticker.remove(this.darkOverlayTicker)
+      this.darkOverlayTicker = null
+    }
+    
+    // Уничтожаем затемненный фон
+    if (this.darkOverlay) {
+      this.darkOverlay.destroy()
+      this.darkOverlay = null
     }
     
     // Уничтожаем спрайт

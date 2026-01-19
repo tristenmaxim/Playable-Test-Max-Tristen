@@ -52,6 +52,7 @@ export class GameController {
     this.tutorialOverlay = null // Tutorial Overlay
     this.footer = null // Footer (внизу экрана)
     this.loseScreen = null // Lose Screen (экран проигрыша)
+    this.failEndScreen = null // Fail End Screen (финальный экран проигрыша)
     
     // Единый массив данных спавна всех сущностей из референса (массив Gl)
     // Каждая запись будет помечена как spawned после спавна
@@ -182,6 +183,14 @@ export class GameController {
     
     // Добавляем Lose Screen в gameContainer (высокий z-index для отображения поверх всего)
     this.gameContainer.addChild(this.loseScreen)
+    
+    // Инициализация Fail End Screen (финальный экран проигрыша)
+    const { FailEndScreen } = await import('../ui/FailEndScreen.js')
+    this.failEndScreen = new FailEndScreen(this.app, this.assetLoader)
+    await this.failEndScreen.init()
+    
+    // Добавляем Fail End Screen в gameContainer (высокий z-index для отображения поверх всего)
+    this.gameContainer.addChild(this.failEndScreen)
     
     console.log('✅ UI элементы инициализированы')
   }
@@ -907,7 +916,30 @@ export class GameController {
     
     // Показываем экран проигрыша
     if (this.loseScreen) {
-      this.loseScreen.show()
+      // Передаем callback, который будет вызван после завершения анимации расширения
+      this.loseScreen.show(() => {
+        // Через 250ms после полного появления asset_0041.png скрываем его и показываем финальный экран
+        // Время уменьшено в два раза (было 500ms)
+        setTimeout(() => {
+          // Скрываем LoseScreen и затемнение
+          if (this.loseScreen) {
+            this.loseScreen.hide()
+          }
+          
+          // Скрываем Footer (футер должен исчезнуть в конце)
+          if (this.footer) {
+            this.footer.visible = false
+            this.footer.alpha = 0
+          }
+          
+          // Показываем финальный экран проигрыша с текущим счетом
+          if (this.failEndScreen) {
+            this.failEndScreen.show(this.score)
+          } else {
+            console.warn('⚠️ FailEndScreen не инициализирован')
+          }
+        }, 250) // 250ms = четверть секунды (было 500ms)
+      })
     } else {
       console.warn('⚠️ LoseScreen не инициализирован')
     }
