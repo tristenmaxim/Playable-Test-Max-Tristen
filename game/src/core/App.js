@@ -80,6 +80,9 @@ export class App {
         if (this.gameController.footer && this.gameController.footer.onResize) {
           this.gameController.footer.onResize()
         }
+        if (this.gameController.loseScreen && this.gameController.loseScreen.onResize) {
+          this.gameController.loseScreen.onResize()
+        }
       }
     })
   }

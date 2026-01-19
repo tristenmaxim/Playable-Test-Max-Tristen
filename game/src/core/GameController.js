@@ -51,6 +51,7 @@ export class GameController {
     this.scoreDisplay = null // Score Display
     this.tutorialOverlay = null // Tutorial Overlay
     this.footer = null // Footer (внизу экрана)
+    this.loseScreen = null // Lose Screen (экран проигрыша)
     
     // Единый массив данных спавна всех сущностей из референса (массив Gl)
     // Каждая запись будет помечена как spawned после спавна
@@ -173,6 +174,14 @@ export class GameController {
     // Добавляем Footer в gameContainer ПОСЛЕ ScoreDisplay, чтобы ScoreDisplay был выше по z-index
     // Footer должен быть ниже ScoreDisplay, чтобы не перекрывать счет
     this.gameContainer.addChild(this.footer)
+    
+    // Инициализация Lose Screen
+    const { LoseScreen } = await import('../ui/LoseScreen.js')
+    this.loseScreen = new LoseScreen(this.app, this.assetLoader)
+    await this.loseScreen.init()
+    
+    // Добавляем Lose Screen в gameContainer (высокий z-index для отображения поверх всего)
+    this.gameContainer.addChild(this.loseScreen)
     
     console.log('✅ UI элементы инициализированы')
   }
@@ -466,6 +475,11 @@ export class GameController {
    * @param {number} deltaMS - Время с последнего кадра в миллисекундах
    */
   update(deltaMS) {
+    // Не обновляем игру, если игра завершена (проигрыш или победа)
+    if (this.state === CONSTANTS.STATES.END_LOSE || this.state === CONSTANTS.STATES.END_WIN) {
+      return
+    }
+    
     // Всегда обновляем фон
     if (this.parallaxBackground) {
       // В INTRO фон не движется, в RUNNING - движется
@@ -861,9 +875,45 @@ export class GameController {
    * Обработка поражения
    */
   handleLose() {
+    // Останавливаем игру
     this.isRunning = false
+    
+    // Останавливаем игрока (переключаем на idle)
+    if (this.player && this.player.idle) {
+      this.player.idle()
+    }
+    
+    // Паузим фон
+    if (this.parallaxBackground && this.parallaxBackground.pause) {
+      this.parallaxBackground.pause()
+    }
+    
+    // Останавливаем всех врагов
+    this.enemies.forEach(enemy => {
+      if (enemy.stop) {
+        enemy.stop()
+      }
+    })
+    
+    // Останавливаем все препятствия
+    this.obstacles.forEach(obstacle => {
+      if (obstacle.stop) {
+        obstacle.stop()
+      }
+    })
+    
+    // Переводим в состояние END_LOSE
     this.setState(CONSTANTS.STATES.END_LOSE)
+    
+    // Показываем экран проигрыша
+    if (this.loseScreen) {
+      this.loseScreen.show()
+    } else {
+      console.warn('⚠️ LoseScreen не инициализирован')
+    }
+    
     this.emit('lose', { score: this.score })
+    console.log('💀 Поражение! HP достиг нуля')
   }
 
   /**
