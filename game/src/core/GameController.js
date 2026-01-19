@@ -810,8 +810,8 @@ export class GameController {
     // Паузим игру
     this.isRunning = false
     
-    // Паузим фоновую музыку
-    this.audioManager.pauseBGM()
+    // НЕ паузим фоновую музыку - она должна продолжать играть во время туториала
+    // this.audioManager.pauseBGM() // Убрано - музыка продолжает играть
     
     // Останавливаем игрока (переключаем на idle)
     if (this.player && this.player.idle) {
@@ -849,8 +849,8 @@ export class GameController {
     this.isRunning = true
     this.jumpingEnabled = true
     
-    // Возобновляем фоновую музыку
-    this.audioManager.resumeBGM()
+    // Музыка не останавливалась, поэтому не нужно её возобновлять
+    // this.audioManager.resumeBGM() // Убрано - музыка продолжает играть
     
     // Возобновляем фон
     if (this.parallaxBackground && this.parallaxBackground.resume) {
