@@ -55,7 +55,7 @@ export class TutorialOverlay extends Container {
    * Загрузка шрифта GameFont из asset_0045.ttf
    */
   async loadFont() {
-    const fontPath = '../reference/reference_assets/data_uri_assets/asset_0045.ttf'
+    const fontPath = '/reference/reference_assets/data_uri_assets/asset_0045.ttf'
     
     try {
       // Загружаем шрифт через FontFace API

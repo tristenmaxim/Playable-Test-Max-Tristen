@@ -4,13 +4,13 @@
  * Этап 13: Финишная линия появляется и завершает игру
  * 
  * Финиш состоит из:
- * - Столбы финиша (sprite)
- * - Лента между столбами (tapeSprite)
+ * - Столбы финиша и лента (asset_0010.png)
  * - Анимация разрыва ленты при достижении игроком
  */
 
 import { Sprite, Graphics, Container } from 'pixi.js'
 import { CONSTANTS } from '../core/Constants.js'
+import { rectanglesIntersect } from '../utils/Collision.js'
 
 export class FinishLine {
   constructor(app, assetLoader, x = 0, y = 0) {
@@ -26,12 +26,14 @@ export class FinishLine {
     
     // Спрайты
     this.sprite = null // Столбы финиша (asset_0010.png)
-    this.tapeSprite = null // Лента между столбами (пока fallback, потом будет отдельная текстура)
-    this.floorPattern = null // Шахматная доска на земле (отдельный элемент с низким z-index)
+    this.tapeSprite = null // Больше не используется - лента уже в asset_0010.png
+    this.cornerSprite = null // asset_0011.png в левом верхнем углу
+    this.cornerSpriteCopy = null // Копия asset_0011.png, смещенная вправо на 20%
+    this.yellowTape = null // Желтая лента между верхними точками стоек
     
     // Текстуры
     this.finishTexture = null
-    this.floorPatternTexture = null
+    this.cornerTexture = null
     
     // X координата разрыва ленты (относительно игрока)
     // Когда игрок достигает этой позиции, лента разрывается
@@ -111,16 +113,16 @@ export class FinishLine {
 
   /**
    * Загрузка текстур финиша
-   * asset_0010.png - финишная черта (столбы финиша)
-   * asset_0011.png или asset_0012.png - шахматная доска на земле
+   * asset_0010.png - шахматная доска (финишная черта)
+   * asset_0011.png - элемент в левом верхнем углу
    */
   async loadTextures() {
-    // Загружаем текстуру финиша из референса
+    // Загружаем текстуру финиша (шахматная доска)
     const finishPath = '../reference/reference_assets/data_uri_assets/asset_0010.png'
-    // Пробуем найти текстуру шахматной доски (может быть asset_0011 или asset_0012)
-    const floorPatternPath = '../reference/reference_assets/data_uri_assets/asset_0011.png'
+    // Загружаем текстуру для левого верхнего угла
+    const cornerPath = '../reference/reference_assets/data_uri_assets/asset_0011.png'
     
-    console.log('🔄 Загрузка текстур финиша:', { finishPath, floorPatternPath })
+    console.log('🔄 Загрузка текстур финиша:', { finishPath, cornerPath })
     
     try {
       this.finishTexture = await this.assetLoader.loadTexture(finishPath)
@@ -139,16 +141,17 @@ export class FinishLine {
       this.finishTexture = null
     }
     
-    // Загружаем текстуру шахматной доски
+    // Загружаем текстуру для левого верхнего угла
     try {
-      this.floorPatternTexture = await this.assetLoader.loadTexture(floorPatternPath)
-      console.log(`✅ Текстура шахматной доски загружена:`, {
-        width: this.floorPatternTexture.width,
-        height: this.floorPatternTexture.height
+      this.cornerTexture = await this.assetLoader.loadTexture(cornerPath)
+      console.log(`✅ Текстура угла загружена успешно:`, {
+        width: this.cornerTexture.width,
+        height: this.cornerTexture.height,
+        valid: this.cornerTexture.width > 0 && this.cornerTexture.height > 0
       })
     } catch (error) {
-      console.warn('⚠️ Не удалось загрузить текстуру шахматной доски, создадим fallback')
-      this.floorPatternTexture = null
+      console.warn('⚠️ Не удалось загрузить текстуру угла (asset_0011.png):', error)
+      this.cornerTexture = null
     }
   }
 
@@ -175,49 +178,8 @@ export class FinishLine {
     this.container.visible = true
     this.container.alpha = 1
     
-    // Референс: floorPattern.y = a - 80, где a = Me - oe.GROUND_Y (roadY)
-    // Шахматная доска должна быть на земле ПОД игроком с z-index 5
-    // Создаём шахматную доску на земле
-    if (this.floorPatternTexture) {
-      this.floorPattern = new Sprite(this.floorPatternTexture)
-      this.floorPattern.anchor.set(0.5, 0.5) // Центр (как в референсе)
-      this.floorPattern.scale.set(2) // Референс: scale.set(2)
-      this.floorPattern.zIndex = CONSTANTS.Z_INDEX.FINISH_LINE_GROUND // z-index 5 в оригинале, у нас 15
-      this.floorPattern.visible = true
-      this.floorPattern.alpha = 1
-      // Позиция: на земле, немного выше roadY (y = roadY - 80 в оригинале)
-      // Но так как контейнер уже на roadY, позиция относительно контейнера будет отрицательной
-      this.floorPattern.x = 0 // Центр по X
-      this.floorPattern.y = -80 // На 80px выше roadY (относительно контейнера)
-      this.container.addChild(this.floorPattern)
-    } else {
-      // Fallback - создаём шахматную доску через Graphics
-      const checkerboardSize = 200
-      const checkerSize = 20
-      const checkerboardGraphics = new Graphics()
-      
-      // Рисуем шахматную доску
-      for (let i = 0; i < checkerboardSize / checkerSize; i++) {
-        for (let j = 0; j < checkerboardSize / checkerSize; j++) {
-          const color = (i + j) % 2 === 0 ? 0xFFFFFF : 0x000000
-          checkerboardGraphics.rect(
-            -checkerboardSize / 2 + i * checkerSize,
-            -checkerboardSize / 2 + j * checkerSize,
-            checkerSize,
-            checkerSize
-          )
-          checkerboardGraphics.fill(color)
-        }
-      }
-      
-      this.floorPattern = checkerboardGraphics
-      this.floorPattern.zIndex = CONSTANTS.Z_INDEX.FINISH_LINE_GROUND
-      this.floorPattern.visible = true
-      this.floorPattern.alpha = 1
-      this.floorPattern.x = 0
-      this.floorPattern.y = -80
-      this.container.addChild(this.floorPattern)
-    }
+    // Убрали шахматную доску на земле (asset_0011.png) - это был лишний ассет
+    // Оставляем только asset_0010.png (столбы финиша)
     
     // Создаём спрайт финиша из текстуры (как в референсе)
     // Столбы должны быть выше шахматной доски, но все равно под игроком
@@ -269,53 +231,212 @@ export class FinishLine {
       comparison: `Финиш масштабирован в ${(0.54 / FINISH_SCALE).toFixed(2)} раза меньше игрока`
     })
     
-    // Лента между столбами (fallback - простой прямоугольник, пока нет текстуры)
-    // Ширина ленты должна быть примерно равна ширине финиша
-    const finishWidth = this.sprite.width // Используем уже масштабированную ширину
-    const tapeWidth = finishWidth * 0.8 // Лента немного уже финиша
-    const tapeHeight = 20 // Высота ленты
-    const tapeGraphics = new Graphics()
-    tapeGraphics.rect(-tapeWidth / 2, -tapeHeight / 2, tapeWidth, tapeHeight)
-    tapeGraphics.fill(0xFFD700) // Золотой цвет
-    tapeGraphics.stroke({ width: 2, color: 0xFFA500 }) // Оранжевая обводка
-    
-    // Создаём спрайт ленты
-    this.tapeSprite = tapeGraphics
-    // Anchor (0.5, 0.5) - центр (для Graphics это через позиционирование)
-    this.tapeSprite.zIndex = this.zIndex + 1 // Лента выше столбов
-    
-    // Позиция ленты (выше финиша)
-    // Используем высоту спрайта финиша для позиционирования ленты (уже масштабированную)
-    // Референс: лента должна быть примерно на уровне пояса игрока
-    const finishHeight = this.sprite.height
-    // Лента должна быть в верхней части финиша, примерно на 70-80% высоты от низа
-    const tapeYOffset = -finishHeight * 0.75 // Лента на 75% высоты финиша от низа
+    // Убрали программно созданную ленту (tapeSprite) - лента уже в asset_0010.png
+    // Оставляем только asset_0010.png со столбами и лентой
     
     // Позиционируем столбы (anchor 0.5, 1 - центр по X, низ по Y)
     this.sprite.x = 0
     this.sprite.y = 0 // Низ столбов в точке (0, 0) контейнера
     
-    // Добавляем спрайты в контейнер
+    // Добавляем спрайт финиша в контейнер
     this.container.addChild(this.sprite)
-    this.container.addChild(this.tapeSprite)
+    
+    // Создаём спрайт для левого верхнего угла (asset_0011.png)
+    if (this.cornerTexture) {
+      this.cornerSprite = new Sprite(this.cornerTexture)
+      // Anchor (0, 0) - левый верхний угол для точного позиционирования
+      this.cornerSprite.anchor.set(0, 0)
+      this.cornerSprite.zIndex = this.zIndex + 1 // Выше основного спрайта
+      this.cornerSprite.visible = true
+      this.cornerSprite.alpha = 1
+      
+      // Поворачиваем на -90 градусов (-π/2 радиан) для вертикальной ориентации вверх
+      // Отрицательный угол поворачивает против часовой стрелки, чтобы спрайт смотрел вверх
+      this.cornerSprite.rotation = -Math.PI / 2
+      
+      // Уменьшаем размер стойки до 65% от текущего (высота и ширина)
+      this.cornerSprite.scale.set(0.65, 0.65)
+      
+      // Позиционируем в левом верхнем углу asset_0010.png
+      // asset_0010.png имеет anchor (0.5, 1), поэтому:
+      // - Левый край: x = -width/2
+      // - Верхний край: y = -height
+      const spriteLeft = -this.sprite.width / 2
+      const spriteTop = -this.sprite.height
+      
+      // После поворота на -90 градусов, спрайт будет смотреть вверх
+      // Поворот происходит вокруг anchor (0, 0), поэтому левый верхний угол остается на месте
+      // Масштабирование также происходит относительно anchor (0, 0), поэтому позиция остается той же
+      this.cornerSprite.x = spriteLeft
+      this.cornerSprite.y = spriteTop
+      
+      // Добавляем в контейнер
+      this.container.addChild(this.cornerSprite)
+      
+      // Создаём копию asset_0011.png и смещаем вправо на 20% относительно asset_0010.png
+      this.cornerSpriteCopy = new Sprite(this.cornerTexture)
+      this.cornerSpriteCopy.anchor.set(0, 0)
+      this.cornerSpriteCopy.zIndex = this.zIndex + 1 // Выше основного спрайта
+      this.cornerSpriteCopy.visible = true
+      this.cornerSpriteCopy.alpha = 1
+      
+      // Поворачиваем на -90 градусов для вертикальной ориентации вверх (как оригинал)
+      this.cornerSpriteCopy.rotation = -Math.PI / 2
+      
+      // Уменьшаем размер копии стойки до 65% от текущего (высота и ширина)
+      this.cornerSpriteCopy.scale.set(0.65, 0.65)
+      
+      // Смещаем вправо на 16% ширины asset_0010.png (ближе к левому краю)
+      const offsetRight = this.sprite.width * 0.16
+      this.cornerSpriteCopy.x = spriteLeft + offsetRight
+      
+      // Опускаем ниже нижнего края asset_0010.png, ближе к нижнему левому углу
+      // asset_0010.png имеет anchor (0.5, 1), поэтому его нижний край на y = 0
+      // Чтобы опустить копию ниже, нужно сместить её вниз от нижнего края
+      // Добавляем небольшое смещение вниз для более точного позиционирования в углу
+      // После масштабирования высота изменилась, поэтому используем масштабированную высоту
+      const offsetDown = 10 // Небольшое смещение вниз в пикселях
+      this.cornerSpriteCopy.y = -this.cornerSpriteCopy.height + offsetDown
+      
+      // Добавляем копию в контейнер
+      this.container.addChild(this.cornerSpriteCopy)
+      
+      // Создаём желтую ленту между верхними точками стоек
+      // Учитываем, что стойки повернуты на -90 градусов и масштабированы до 65%
+      // После поворота на -90 градусов вокруг anchor (0, 0):
+      // - Исходная ширина текстуры становится высотой повернутого спрайта
+      // - Исходная высота текстуры становится шириной повернутого спрайта
+      // Anchor (0, 0) означает левый верхний угол исходной текстуры
+      // После поворота на -90 градусов против часовой стрелки:
+      // - Левый верхний угол (anchor) остается на месте (cornerSprite.x, cornerSprite.y)
+      // - Верхняя точка будет справа от anchor на расстоянии исходная_ширина * масштаб
+      // Используем реальные размеры повернутого и масштабированного спрайта
+      // После поворота на -90 градусов и масштабирования до 0.65:
+      // - cornerSprite.height уже содержит масштабированную высоту
+      // - Высота = исходная_ширина_текстуры * 0.65
+      // Используем реальную высоту спрайта (она уже масштабирована)
+      const leftPostHeight = this.cornerSprite.height
+      const rightPostHeight = this.cornerSpriteCopy.height
+      
+      // Верхняя точка левой стойки (оригинал asset_0011)
+      // После поворота на -90 градусов против часовой стрелки вокруг anchor (0, 0):
+      // - Anchor точка (cornerSprite.x, cornerSprite.y) остается на месте
+      // - Исходный спрайт был горизонтальным, после поворота стал вертикальным
+      // - После поворота на -90 градусов против часовой стрелки:
+      //   * Исходная ширина текстуры становится высотой повернутого спрайта
+      //   * Исходная высота текстуры становится шириной повернутого спрайта
+      // - Anchor (0, 0) означает левый верхний угол исходной текстуры
+      // - После поворота, anchor точка становится ЛЕВЫМ ВЕРХНИМ углом повернутого спрайта
+      // - Верхняя точка повернутого спрайта находится справа от anchor на расстоянии высоты
+      // - X координата верхней точки = cornerSprite.x + высота_повернутого_спрайта
+      // - Y координата верхней точки = cornerSprite.y (та же, что и anchor - это ВЕРХНЯЯ точка)
+      const leftPostTopX = this.cornerSprite.x + leftPostHeight
+      const leftPostTopY = this.cornerSprite.y // Y координата верхней точки (та же, что и anchor)
+      
+      // Верхняя точка правой стойки (копия asset_0011)
+      const rightPostTopX = this.cornerSpriteCopy.x + rightPostHeight
+      const rightPostTopY = this.cornerSpriteCopy.y // Y координата остается той же (верхняя точка)
+      
+      console.log(`🔍 Вычисление верхних точек стоек:`, {
+        cornerTextureSize: `${this.cornerTexture.width}x${this.cornerTexture.height}`,
+        leftPostSpriteSize: `${this.cornerSprite.width.toFixed(0)}x${this.cornerSprite.height.toFixed(0)}`,
+        leftPostPosition: `(${this.cornerSprite.x.toFixed(0)}, ${this.cornerSprite.y.toFixed(0)})`,
+        leftPostHeight: `${leftPostHeight.toFixed(0)}px`,
+        leftPostTop: `(${leftPostTopX.toFixed(0)}, ${leftPostTopY.toFixed(0)})`,
+        rightPostSpriteSize: `${this.cornerSpriteCopy.width.toFixed(0)}x${this.cornerSpriteCopy.height.toFixed(0)}`,
+        rightPostPosition: `(${this.cornerSpriteCopy.x.toFixed(0)}, ${this.cornerSpriteCopy.y.toFixed(0)})`,
+        rightPostHeight: `${rightPostHeight.toFixed(0)}px`,
+        rightPostTop: `(${rightPostTopX.toFixed(0)}, ${rightPostTopY.toFixed(0)})`
+      })
+      
+      // Создаём желтую ленту как Graphics прямоугольник
+      const tapeGraphics = new Graphics()
+      const baseTapeHeight = 8 // Базовая высота ленты в пикселях
+      const baseTapeWidth = Math.abs(rightPostTopX - leftPostTopX) // Базовая ширина ленты = расстояние между верхними точками
+      // Увеличиваем размер ленты на 25%
+      const tapeHeight = baseTapeHeight * 1.25 // Высота увеличена на 25%
+      // Увеличиваем длину (ширину) ленты на 25% + 20% = на 50% от исходного размера
+      const tapeWidth = baseTapeWidth * 1.25 * 1.2 // Длина увеличена на 25%, затем еще на 20%
+      
+      // Проверяем, что ширина ленты положительная
+      if (tapeWidth > 0) {
+        // Рисуем прямоугольник для ленты
+        // Позиционируем от левой верхней точки до правой верхней точки
+        // Лента рисуется от (0, 0) до (tapeWidth, tapeHeight), где (0, 0) - левый верхний угол
+        tapeGraphics.rect(0, 0, tapeWidth, tapeHeight)
+        tapeGraphics.fill(0xFFD700) // Желтый цвет (#FFD700)
+        tapeGraphics.stroke({ width: 1, color: 0xFFA500 }) // Оранжевая обводка
+        
+        this.yellowTape = tapeGraphics
+        this.yellowTape.zIndex = this.zIndex + 2 // Выше стоек
+        this.yellowTape.visible = true
+        this.yellowTape.alpha = 1
+        
+        // Позиционируем ленту на 35% от низа экрана
+        // Graphics не имеет anchor, поэтому позиционируем напрямую
+        // Лента рисуется от (0, 0) до (tapeWidth, tapeHeight)
+        // Позиция (x, y) - это левый верхний угол ленты
+        // Вычисляем позицию на 35% от низа экрана
+        const screenHeight = this.app.screen.height
+        // 35% от низа экрана = 65% от верха экрана
+        const targetCenterY = screenHeight * 0.65
+        
+        // Контейнер находится на позиции this.y (groundY), поэтому нужно вычислить относительную позицию
+        const tapeCenterY = targetCenterY - this.y // Относительно контейнера
+        const tapeTopY = tapeCenterY - tapeHeight / 2 // Верхний край ленты
+        
+        // Устанавливаем pivot в центр ленты для правильного поворота
+        this.yellowTape.pivot.set(tapeWidth / 2, tapeHeight / 2)
+        
+        // Позиционируем центр ленты, смещая левее на 20% от размера ленты
+        const leftOffset = tapeWidth * 0.2 // 20% от длины ленты
+        this.yellowTape.x = leftPostTopX + tapeWidth / 2 - leftOffset
+        this.yellowTape.y = tapeCenterY // Центр ленты на нужной высоте
+        
+        // Поворачиваем ленту на 45 градусов (π/4 радиан)
+        this.yellowTape.rotation = Math.PI / 4
+        
+        // Добавляем ленту в контейнер
+        this.container.addChild(this.yellowTape)
+        
+        console.log(`✅ Желтая лента создана:`, {
+          leftPostTop: `(${leftPostTopX.toFixed(0)}, ${leftPostTopY.toFixed(0)})`,
+          rightPostTop: `(${rightPostTopX.toFixed(0)}, ${rightPostTopY.toFixed(0)})`,
+          tapeWidth: `${tapeWidth.toFixed(0)}px`,
+          tapeHeight: `${tapeHeight}px`,
+          tapePosition: `(${this.yellowTape.x.toFixed(0)}, ${this.yellowTape.y.toFixed(0)})`
+        })
+      } else {
+        console.warn('⚠️ Не удалось создать желтую ленту: некорректная ширина', tapeWidth)
+      }
+      
+      console.log(`✅ Спрайт угла добавлен:`, {
+        cornerTextureSize: `${this.cornerTexture.width}x${this.cornerTexture.height}`,
+        cornerPosition: `(${spriteLeft.toFixed(0)}, ${spriteTop.toFixed(0)})`,
+        cornerCopyPosition: `(${(spriteLeft + offsetRight).toFixed(0)}, ${(-this.cornerSpriteCopy.height + offsetDown).toFixed(0)})`,
+        offsetRight: `${offsetRight.toFixed(0)}px (16% от ширины)`,
+        offsetDown: `${offsetDown.toFixed(0)}px`,
+        cornerCopyHeight: `${this.cornerSpriteCopy.height.toFixed(0)}px`,
+        spriteSize: `${this.sprite.width.toFixed(0)}x${this.sprite.height.toFixed(0)}`,
+        spriteBottom: 'y = 0 (нижний край asset_0010.png)',
+        spriteLeft: `x = ${spriteLeft.toFixed(0)} (левый край asset_0010.png)`
+      })
+    }
     
     // Сохраняем размеры для коллизий
     this.width = this.sprite.width
     this.height = this.sprite.height
     
-    // Устанавливаем позицию ленты относительно столбов
-    this.tapeSprite.x = 0 // Центр по X (как столбы)
-    this.tapeSprite.y = tapeYOffset // Выше столбов
+    // tapeSprite больше не используется - лента уже в asset_0010.png
+    this.tapeSprite = null
     
     // Убеждаемся, что контейнер видим
     this.container.visible = true
     this.container.alpha = 1
     
-    // Убеждаемся, что спрайты видимы
-    this.sprite.visible = true
-    this.sprite.alpha = 1
-    this.tapeSprite.visible = true
-    this.tapeSprite.alpha = 1
+      // Убеждаемся, что спрайт видим
+      this.sprite.visible = true
+      this.sprite.alpha = 1
     
     console.log(`✅ Финишная линия создана:`, {
       textureSize: `${this.finishTexture.width}x${this.finishTexture.height}`,
@@ -323,22 +444,24 @@ export class FinishLine {
       scale: FINISH_SCALE.toFixed(2),
       width: this.width.toFixed(0),
       height: this.height.toFixed(0),
-      tapeYOffset: tapeYOffset.toFixed(0),
       containerVisible: this.container.visible,
       containerAlpha: this.container.alpha,
-      floorPatternVisible: this.floorPattern?.visible,
-      floorPatternZIndex: this.floorPattern?.zIndex,
-      floorPatternY: this.floorPattern?.y,
       spriteVisible: this.sprite.visible,
       spriteAlpha: this.sprite.alpha,
       spriteZIndex: this.sprite.zIndex,
       spriteX: this.sprite.x,
       spriteY: this.sprite.y,
-      tapeSpriteVisible: this.tapeSprite.visible,
-      tapeSpriteAlpha: this.tapeSprite.alpha,
-      tapeSpriteX: this.tapeSprite.x,
-      tapeSpriteY: this.tapeSprite.y,
-      childrenCount: this.container.children.length
+      cornerSprite: this.cornerSprite ? '✅' : '❌',
+      cornerSpriteVisible: this.cornerSprite?.visible,
+      cornerSpritePosition: this.cornerSprite ? `(${this.cornerSprite.x.toFixed(0)}, ${this.cornerSprite.y.toFixed(0)})` : 'N/A',
+        cornerSpriteCopy: this.cornerSpriteCopy ? '✅' : '❌',
+        cornerSpriteCopyVisible: this.cornerSpriteCopy?.visible,
+        cornerSpriteCopyPosition: this.cornerSpriteCopy ? `(${this.cornerSpriteCopy.x.toFixed(0)}, ${this.cornerSpriteCopy.y.toFixed(0)})` : 'N/A',
+        yellowTape: this.yellowTape ? '✅' : '❌',
+        yellowTapeVisible: this.yellowTape?.visible,
+        yellowTapePosition: this.yellowTape ? `(${this.yellowTape.x.toFixed(0)}, ${this.yellowTape.y.toFixed(0)})` : 'N/A',
+        yellowTapeWidth: this.yellowTape ? `${this.yellowTape.width.toFixed(0)}px` : 'N/A',
+        childrenCount: this.container.children.length
     })
   }
 
@@ -385,33 +508,8 @@ export class FinishLine {
     this.container.visible = true
     this.container.alpha = 1
     
-    // Референс: floorPattern.y = a - 80, где a = roadY
-    // Шахматная доска должна быть на земле ПОД игроком
-    const checkerboardSize = 200
-    const checkerSize = 20
-    const checkerboardGraphics = new Graphics()
-    
-    // Рисуем шахматную доску (fallback)
-    for (let i = 0; i < checkerboardSize / checkerSize; i++) {
-      for (let j = 0; j < checkerboardSize / checkerSize; j++) {
-        const color = (i + j) % 2 === 0 ? 0xFFFFFF : 0x000000
-        checkerboardGraphics.rect(
-          -checkerboardSize / 2 + i * checkerSize,
-          -checkerboardSize / 2 + j * checkerSize,
-          checkerSize,
-          checkerSize
-        )
-        checkerboardGraphics.fill(color)
-      }
-    }
-    
-    this.floorPattern = checkerboardGraphics
-    this.floorPattern.zIndex = CONSTANTS.Z_INDEX.FINISH_LINE_GROUND // Низкий z-index (15), под игроком
-    this.floorPattern.visible = true
-    this.floorPattern.alpha = 1
-    this.floorPattern.x = 0
-    this.floorPattern.y = -80 // На 80px выше roadY (относительно контейнера)
-    this.container.addChild(this.floorPattern)
+    // Убрали шахматную доску (asset_0011.png) - это был лишний ассет
+    // Оставляем только столбы финиша
     
     // Fallback - простые прямоугольники для столбов
     const finishWidth = 100
@@ -437,22 +535,12 @@ export class FinishLine {
     this.sprite.visible = true
     this.sprite.alpha = 1
     
-    // Лента (fallback)
-    const tapeGraphics = new Graphics()
-    tapeGraphics.rect(-tapeWidth / 2, -tapeHeight / 2, tapeWidth, tapeHeight)
-    tapeGraphics.fill(0xFFD700) // Золотой цвет
-    tapeGraphics.stroke({ width: 2, color: 0xFFA500 }) // Оранжевая обводка
-    
-    this.tapeSprite = tapeGraphics
-    this.tapeSprite.zIndex = this.zIndex + 1
-    this.tapeSprite.x = 0
-    this.tapeSprite.y = -finishHeight + 100
-    this.tapeSprite.visible = true
-    this.tapeSprite.alpha = 1
-    
-    // Добавляем в правильном порядке: сначала шахматная доска (низкий z-index), потом столбы и лента
+    // Убрали программно созданную ленту - лента уже в asset_0010.png
+    // Добавляем только спрайт финиша
     this.container.addChild(this.sprite)
-    this.container.addChild(this.tapeSprite)
+    
+    // tapeSprite больше не используется
+    this.tapeSprite = null
     
     this.width = finishWidth * 2 + 40 // Ширина обоих столбов
     this.height = finishHeight
@@ -461,10 +549,7 @@ export class FinishLine {
       width: this.width,
       height: this.height,
       containerVisible: this.container.visible,
-      floorPatternVisible: this.floorPattern?.visible,
       spriteVisible: this.sprite.visible,
-      tapeSpriteVisible: this.tapeSprite.visible,
-      floorPatternZIndex: this.floorPattern?.zIndex,
       spriteZIndex: this.sprite.zIndex
     })
   }
@@ -508,10 +593,7 @@ export class FinishLine {
       }
     }
     
-    // Обновление анимации разрыва ленты
-    if (this.breakAnimation.isAnimating) {
-      this.updateBreakAnimation(deltaMS)
-    }
+    // Убрали обновление анимации - asset_0010.png должна оставаться статичной
     
     // Деактивация при выходе за экран
     if (this.x + this.width < -100) {
@@ -521,61 +603,52 @@ export class FinishLine {
 
   /**
    * Разрыв ленты
-   * Запускает анимацию разрыва ленты
+   * Лента исчезает сразу при столкновении
    */
   breakTape() {
     if (this.isBroken) return
     
     this.isBroken = true
     
-    // Инициализация анимации разрыва
-    this.breakAnimation.isAnimating = true
-    this.breakAnimation.startTime = Date.now()
-    this.breakAnimation.startY = this.tapeSprite.y
-    this.breakAnimation.startRotation = this.tapeSprite.rotation || 0
+    // Скрываем ленту сразу при столкновении
+    if (this.yellowTape) {
+      this.yellowTape.visible = false
+      // Можно также удалить из контейнера, но скрытие достаточно
+      // this.container.removeChild(this.yellowTape)
+    }
     
-    // Случайный поворот (от -10 до +10 градусов, как в референсе)
-    const randomRotation = (Math.random() * 20 - 10) * (Math.PI / 180) // Конвертируем в радианы
-    this.breakAnimation.targetRotation = randomRotation
+    console.log('🏁 Финиш пройден! Лента исчезла.')
+  }
+  
+  /**
+   * Проверка коллизии игрока с желтой лентой
+   * @param {Object} playerHitbox - Хитбокс игрока { x, y, width, height }
+   * @returns {boolean} true если есть коллизия
+   */
+  checkTapeCollision(playerHitbox) {
+    if (!this.yellowTape || !this.yellowTape.visible || this.isBroken) {
+      return false
+    }
     
-    // Подъём вверх на 50px (как в референсе)
-    this.breakAnimation.targetY = this.breakAnimation.startY - 50
+    // Получаем глобальные координаты ленты
+    const tapeBounds = this.yellowTape.getBounds()
     
-    console.log('🏁 Лента финиша разорвана!')
+    // Проверяем пересечение прямоугольников
+    return rectanglesIntersect(playerHitbox, {
+      x: tapeBounds.x,
+      y: tapeBounds.y,
+      width: tapeBounds.width,
+      height: tapeBounds.height
+    })
   }
 
   /**
    * Обновление анимации разрыва ленты
-   * Простая анимация через изменение свойств спрайта
+   * УБРАНО - asset_0010.png (шахматная доска) должна оставаться статичной без анимации
    * @param {number} deltaMS - Время с последнего кадра
    */
   updateBreakAnimation(deltaMS) {
-    if (!this.tapeSprite || !this.breakAnimation.isAnimating) return
-    
-    const elapsed = Date.now() - this.breakAnimation.startTime
-    const progress = Math.min(elapsed / this.breakAnimation.duration, 1) // От 0 до 1
-    
-    // Используем ease-out функцию (аналогично power2.out в GSAP)
-    const easeOut = 1 - Math.pow(1 - progress, 2)
-    
-    // Интерполяция позиции Y
-    const currentY = this.breakAnimation.startY + 
-      (this.breakAnimation.targetY - this.breakAnimation.startY) * easeOut
-    this.tapeSprite.y = currentY
-    
-    // Интерполяция поворота
-    const currentRotation = this.breakAnimation.startRotation + 
-      (this.breakAnimation.targetRotation - this.breakAnimation.startRotation) * easeOut
-    this.tapeSprite.rotation = currentRotation
-    
-    // Интерполяция прозрачности (от 1 до 0)
-    this.tapeSprite.alpha = 1 - easeOut
-    
-    // Завершение анимации
-    if (progress >= 1) {
-      this.breakAnimation.isAnimating = false
-      this.tapeSprite.visible = false
-    }
+    // Анимация убрана - шахматная доска остается на месте
   }
 
   /**
@@ -606,6 +679,9 @@ export class FinishLine {
       this.container = null
     }
     this.sprite = null
-    this.tapeSprite = null
+    this.tapeSprite = null // Больше не используется
+    this.cornerSprite = null
+    this.cornerSpriteCopy = null
+    this.yellowTape = null
   }
 }

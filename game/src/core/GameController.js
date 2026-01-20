@@ -653,6 +653,13 @@ export class GameController {
     // Проверка коллизий с коллекциями (не зависит от неуязвимости)
     // Используем существующий метод checkCollectibleCollisions()
     this.checkCollectibleCollisions()
+    
+    // Проверка коллизий с желтой лентой финиша
+    if (this.finishLine && this.finishLine.isActive && !this.finishLine.isBroken) {
+      if (this.finishLine.checkTapeCollision(playerHitbox)) {
+        this.finishLine.breakTape()
+      }
+    }
   }
 
   /**
