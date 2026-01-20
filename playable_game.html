@@ -7681,11 +7681,13 @@ class AudioManager {
       })
       
       // Фоновая музыка (зациклена)
+      // Для Data URI используем html5: true, так как Web Audio API может не работать с Data URI
       this.sounds.bgm = new Howl({
         src: [audioBGMPath],
         volume: this.musicVolume,
         loop: true,
         preload: true,
+        html5: true, // Используем HTML5 Audio для Data URI (Web Audio API может не работать с Data URI)
         onload: () => console.log('✅ Фоновая музыка загружена'),
         onloaderror: (id, error) => console.error('❌ Ошибка загрузки фоновой музыки:', error),
         onplayerror: (id, error) => console.error('❌ Ошибка воспроизведения фоновой музыки:', error)
