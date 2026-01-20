@@ -34,25 +34,37 @@ export class AudioManager {
    * Настройка разблокировки аудио при первом взаимодействии
    */
   setupAudioUnlock() {
-    const unlockAudio = () => {
+    const unlockAudio = async () => {
       if (this.audioUnlocked) return
       
-      if (typeof Howler !== 'undefined' && Howler.ctx) {
-        // Разблокируем аудио контекст
-        Howler.ctx.resume().then(() => {
+      try {
+        // Разблокируем аудио контекст Howler
+        if (typeof Howler !== 'undefined' && Howler.ctx) {
+          await Howler.ctx.resume()
           this.audioUnlocked = true
           console.log('🔓 Аудио разблокировано пользователем')
-        }).catch(err => {
-          console.warn('⚠️ Не удалось разблокировать аудио:', err)
-        })
+          
+          // Также пробуем разблокировать через Howler.unlockAudio() если доступно
+          if (typeof Howler.unlockAudio === 'function') {
+            Howler.unlockAudio()
+            console.log('🔓 Howler.unlockAudio() вызван')
+          }
+        }
+      } catch (err) {
+        console.warn('⚠️ Не удалось разблокировать аудио:', err)
       }
     }
     
     // Слушаем события взаимодействия
-    const events = ['click', 'touchstart', 'keydown']
+    const events = ['click', 'touchstart', 'keydown', 'touchend']
     events.forEach(event => {
-      document.addEventListener(event, unlockAudio, { once: true })
+      document.addEventListener(event, unlockAudio, { once: true, passive: true })
     })
+    
+    // Также пробуем разблокировать сразу, если Howler уже загружен
+    if (typeof Howler !== 'undefined') {
+      unlockAudio()
+    }
   }
 
   /**
@@ -74,6 +86,7 @@ export class AudioManager {
 
       // Используем прямые пути к файлам, которые будут заменены на Data URI скриптом сборки
       // Скрипт сборки заменит эти пути на встроенные Data URI для работы на GitHub Pages
+      // ВАЖНО: После замены на Data URI, эти переменные будут содержать строки вида 'data:audio/mpeg;base64,...'
       const audioJumpPath = '../reference/reference_assets/data_uri_assets/asset_0030.mp3'
       const audioHitPath = '../reference/reference_assets/data_uri_assets/asset_0032.mp3'
       const audioCollectPath = '../reference/reference_assets/data_uri_assets/asset_0033.mp3'
@@ -81,15 +94,23 @@ export class AudioManager {
       const audioBGMPath = '../reference/reference_assets/data_uri_assets/asset_0037.mp3'
       
       console.log('📁 Пути к аудио файлам (будут заменены на Data URI при сборке)')
+      console.log('📁 Проверка путей:', {
+        jump: audioJumpPath.substring(0, 50),
+        hit: audioHitPath.substring(0, 50),
+        collect: audioCollectPath.substring(0, 50),
+        finish: audioFinishPath.substring(0, 50),
+        bgm: audioBGMPath.substring(0, 50)
+      })
       
       // Загружаем звуковые эффекты с обработкой ошибок
       // Важно: для звуков, которые могут воспроизводиться несколько раз подряд,
       // нужно разрешить множественное воспроизведение
+      // Для Data URI используем html5: true, так как Web Audio API может не работать с Data URI
       this.sounds.jump = new Howl({
         src: [audioJumpPath],
         volume: this.soundVolume,
         preload: true,
-        html5: false, // Используем Web Audio API для лучшей производительности
+        html5: true, // Используем HTML5 Audio для Data URI (Web Audio API может не работать с Data URI)
         loop: false, // Не зацикливаем звук
         onload: () => console.log('✅ Звук прыжка загружен'),
         onloaderror: (id, error) => console.error('❌ Ошибка загрузки звука прыжка:', error),
@@ -105,7 +126,7 @@ export class AudioManager {
         src: [audioHitPath],
         volume: this.soundVolume,
         preload: true,
-        html5: false,
+        html5: true, // Используем HTML5 Audio для Data URI
         onload: () => console.log('✅ Звук столкновения загружен'),
         onloaderror: (id, error) => console.error('❌ Ошибка загрузки звука столкновения:', error),
         onplayerror: (id, error) => console.error('❌ Ошибка воспроизведения звука столкновения:', error)
@@ -115,7 +136,7 @@ export class AudioManager {
         src: [audioCollectPath],
         volume: this.soundVolume,
         preload: true,
-        html5: false,
+        html5: true, // Используем HTML5 Audio для Data URI
         onload: () => console.log('✅ Звук сбора загружен'),
         onloaderror: (id, error) => console.error('❌ Ошибка загрузки звука сбора:', error),
         onplayerror: (id, error) => console.error('❌ Ошибка воспроизведения звука сбора:', error)
@@ -125,17 +146,20 @@ export class AudioManager {
         src: [audioFinishPath],
         volume: this.soundVolume,
         preload: true,
+        html5: true, // Используем HTML5 Audio для Data URI
         onload: () => console.log('✅ Звук финала загружен'),
         onloaderror: (id, error) => console.error('❌ Ошибка загрузки звука финала:', error),
         onplayerror: (id, error) => console.error('❌ Ошибка воспроизведения звука финала:', error)
       })
       
       // Фоновая музыка (зациклена)
+      // Для Data URI используем html5: true, так как Web Audio API может не работать с Data URI
       this.sounds.bgm = new Howl({
         src: [audioBGMPath],
         volume: this.musicVolume,
         loop: true,
         preload: true,
+        html5: true, // Используем HTML5 Audio для Data URI (Web Audio API может не работать с Data URI)
         onload: () => console.log('✅ Фоновая музыка загружена'),
         onloaderror: (id, error) => console.error('❌ Ошибка загрузки фоновой музыки:', error),
         onplayerror: (id, error) => console.error('❌ Ошибка воспроизведения фоновой музыки:', error)
@@ -287,7 +311,7 @@ export class AudioManager {
   /**
    * Запуск фоновой музыки
    */
-  playBGM() {
+  async playBGM() {
     if (!this.loaded) {
       console.error('❌ AudioManager еще не загружен! Это критическая ошибка.')
       console.trace('Стек вызовов:')
@@ -298,45 +322,75 @@ export class AudioManager {
       return
     }
     
-    // Разблокируем аудио если еще не разблокировано
-    if (!this.audioUnlocked && typeof Howler !== 'undefined' && Howler.ctx) {
-      Howler.ctx.resume().then(() => {
-        this.audioUnlocked = true
-        console.log('🔓 Аудио разблокировано перед воспроизведением музыки')
-      }).catch(err => {
-        console.warn('⚠️ Не удалось разблокировать аудио:', err)
-      })
-    }
-    
     try {
+      // Сначала гарантируем разблокировку аудио контекста
+      if (!this.audioUnlocked && typeof Howler !== 'undefined' && Howler.ctx) {
+        try {
+          await Howler.ctx.resume()
+          this.audioUnlocked = true
+          console.log('🔓 Аудио разблокировано перед воспроизведением музыки')
+        } catch (err) {
+          console.warn('⚠️ Не удалось разблокировать аудио:', err)
+          // Продолжаем попытку воспроизведения даже если разблокировка не удалась
+        }
+      }
+      
       // Проверяем состояние загрузки
       const state = this.sounds.bgm.state()
-      console.log('🎵 Состояние фоновой музыки:', state)
+      console.log('🎵 Состояние фоновой музыки:', state, 'разблокировано:', this.audioUnlocked)
       
       if (state === 'unloaded') {
         console.warn('⚠️ Фоновая музыка еще не загружена, пытаемся загрузить...')
         this.sounds.bgm.load()
-        // Пробуем воспроизвести после небольшой задержки
-        setTimeout(() => {
-          try {
-            const soundId = this.sounds.bgm.play()
-            console.log('🎵 Запуск фоновой музыки (после загрузки), ID:', soundId)
-          } catch (err) {
-            console.error('❌ Ошибка воспроизведения после загрузки:', err)
+        // Пробуем воспроизвести после загрузки
+        this.sounds.bgm.once('load', async () => {
+          // Убеждаемся что аудио разблокировано перед воспроизведением
+          if (!this.audioUnlocked && typeof Howler !== 'undefined' && Howler.ctx) {
+            try {
+              await Howler.ctx.resume()
+              this.audioUnlocked = true
+            } catch (err) {
+              console.warn('⚠️ Не удалось разблокировать аудио при загрузке:', err)
+            }
           }
-        }, 500)
+          
+          setTimeout(() => {
+            try {
+              const soundId = this.sounds.bgm.play()
+              console.log('🎵 Запуск фоновой музыки (после загрузки), ID:', soundId)
+              
+              // Проверяем через небольшую задержку
+              setTimeout(() => {
+                if (this.sounds.bgm && !this.sounds.bgm.playing()) {
+                  console.warn('⚠️ Фоновая музыка не воспроизводится после загрузки')
+                  console.warn('⚠️ AudioContext состояние:', Howler.ctx ? Howler.ctx.state : 'недоступен')
+                } else {
+                  console.log('✅ Фоновая музыка успешно воспроизводится')
+                }
+              }, 200)
+            } catch (err) {
+              console.error('❌ Ошибка воспроизведения после загрузки:', err)
+            }
+          }, 100)
+        })
         return
       }
       
+      // Пробуем воспроизвести
       const soundId = this.sounds.bgm.play()
-      console.log('🎵 Запуск фоновой музыки, ID:', soundId, 'состояние:', state)
+      console.log('🎵 Запуск фоновой музыки, ID:', soundId, 'состояние:', state, 'разблокировано:', this.audioUnlocked)
       
       // Проверяем, что звук действительно играет
       setTimeout(() => {
         if (this.sounds.bgm && !this.sounds.bgm.playing()) {
-          console.warn('⚠️ Фоновая музыка не воспроизводится, возможно требуется взаимодействие пользователя')
+          console.warn('⚠️ Фоновая музыка не воспроизводится')
+          console.warn('⚠️ Состояние звука:', this.sounds.bgm.state())
+          console.warn('⚠️ AudioContext состояние:', Howler.ctx ? Howler.ctx.state : 'недоступен')
+          console.warn('⚠️ Возможно требуется взаимодействие пользователя для разблокировки аудио')
+        } else {
+          console.log('✅ Фоновая музыка успешно воспроизводится')
         }
-      }, 100)
+      }, 200)
     } catch (error) {
       console.error('❌ Ошибка воспроизведения фоновой музыки:', error)
     }
