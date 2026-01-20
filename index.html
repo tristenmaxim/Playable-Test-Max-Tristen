@@ -94,7 +94,7 @@
 // Build version: 1768915074723
 // Force cache refresh
 console.log('🎮 Game version:', 1768915074723)
-import { Application, Container, Text, TextStyle, Sprite, Graphics, Rectangle, Assets, Texture, AnimatedSprite, Spritesheet } from 'pixi.js'
+import { Application, Container, Text, TextStyle, Sprite, Graphics, Rectangle, Assets, Texture, AnimatedSprite, Spritesheet, Point, RenderTexture, MeshRope } from 'pixi.js'
 
 
 // === Начало выполнения модуля ===
@@ -5538,6 +5538,24 @@ class Obstacle {
 // Импорт удален - код встроен
 // Импорт удален - код встроен
 // Импорт удален - код встроен
+
+// Константы для веревки финиша (из оригинала)
+const FINISH_ROPE_CONSTANTS = {
+  ROPE_SEGMENTS: 10,
+  ROPE_LENGTH_FACTOR: 0.3,
+  GRAVITY: 0.3,
+  DAMPING: 0.95,
+  WAVE_SPEED: 0.01,
+  TIME_DECAY: 0.15,
+  MIN_VELOCITY_THRESHOLD: 0.1,
+  MIN_ANIMATION_TIME: 1,
+  ROPE_SEGMENT_DISTANCE: 10,
+  LEFT_ROPE_OFFSET_X: 0,
+  LEFT_ROPE_OFFSET_Y: 0,
+  RIGHT_ROPE_OFFSET_X: 20,
+  RIGHT_ROPE_OFFSET_Y: -20
+}
+
 class FinishLine {
   constructor(app, assetLoader, x = 0, y = 0) {
     this.app = app
@@ -5555,11 +5573,25 @@ class FinishLine {
     this.tapeSprite = null // Больше не используется - лента уже в asset_0010.png
     this.cornerSprite = null // asset_0011.png в левом верхнем углу
     this.cornerSpriteCopy = null // Копия asset_0011.png, смещенная вправо на 20%
-    this.yellowTape = null // Желтая лента между верхними точками стоек
+    this.yellowTape = null // Желтая лента между верхними точками стоек (deprecated, используем leftTape/rightTape)
+    this.leftTape = null // Левая лента (спрайт до разрыва)
+    this.rightTape = null // Правая лента (спрайт до разрыва)
     
     // Текстуры
     this.finishTexture = null
     this.cornerTexture = null
+    this.leftTapeTexture = null // Текстура левой ленты
+    this.rightTapeTexture = null // Текстура правой ленты
+    
+    // Веревки (MeshRope) для анимации разрыва
+    this.leftRope = null
+    this.rightRope = null
+    this.leftRopePoints = []
+    this.rightRopePoints = []
+    this.leftVelocities = []
+    this.rightVelocities = []
+    this.animationTime = 0
+    this.isAnimating = false
     
     // X координата разрыва ленты (относительно игрока)
     // Когда игрок достигает этой позиции, лента разрывается
@@ -5678,6 +5710,43 @@ class FinishLine {
     } catch (error) {
       console.warn('⚠️ Не удалось загрузить текстуру угла (asset_0011.png):', error)
       this.cornerTexture = null
+    }
+    
+    // Создаем текстуры для лент (желтые прямоугольники)
+    // В оригинале используются asset_0013.png (левая) и asset_0014.png (правая)
+    // Создаем программно через Graphics и RenderTexture
+    try {
+      const tapeWidth = 100
+      const tapeHeight = 8
+      
+      // Создаем желтую текстуру для левой ленты
+      const leftTapeGraphics = new Graphics()
+      leftTapeGraphics.rect(0, 0, tapeWidth, tapeHeight)
+      leftTapeGraphics.fill(0xFFD700) // Желтый цвет (#FFD700)
+      leftTapeGraphics.stroke({ width: 1, color: 0xFFA500 }) // Оранжевая обводка
+      
+      const leftRenderTexture = RenderTexture.create({ width: tapeWidth, height: tapeHeight })
+      this.app.renderer.render(leftTapeGraphics, { renderTexture: leftRenderTexture })
+      this.leftTapeTexture = leftRenderTexture
+      
+      // Создаем желтую текстуру для правой ленты
+      const rightTapeGraphics = new Graphics()
+      rightTapeGraphics.rect(0, 0, tapeWidth, tapeHeight)
+      rightTapeGraphics.fill(0xFFD700)
+      rightTapeGraphics.stroke({ width: 1, color: 0xFFA500 })
+      
+      const rightRenderTexture = RenderTexture.create({ width: tapeWidth, height: tapeHeight })
+      this.app.renderer.render(rightTapeGraphics, { renderTexture: rightRenderTexture })
+      this.rightTapeTexture = rightRenderTexture
+      
+      console.log(`✅ Текстуры лент созданы:`, {
+        leftTapeTexture: `${this.leftTapeTexture.width}x${this.leftTapeTexture.height}`,
+        rightTapeTexture: `${this.rightTapeTexture.width}x${this.rightTapeTexture.height}`
+      })
+    } catch (error) {
+      console.error('❌ Ошибка создания текстур лент:', error)
+      this.leftTapeTexture = null
+      this.rightTapeTexture = null
     }
   }
 
@@ -5875,65 +5944,66 @@ class FinishLine {
         rightPostTop: `(${rightPostTopX.toFixed(0)}, ${rightPostTopY.toFixed(0)})`
       })
       
-      // Создаём желтую ленту как Graphics прямоугольник
-      const tapeGraphics = new Graphics()
-      const baseTapeHeight = 8 // Базовая высота ленты в пикселях
-      const baseTapeWidth = Math.abs(rightPostTopX - leftPostTopX) // Базовая ширина ленты = расстояние между верхними точками
-      // Увеличиваем размер ленты на 25%
-      const tapeHeight = baseTapeHeight * 1.25 // Высота увеличена на 25%
-      // Увеличиваем длину (ширину) ленты на 25% + 20% = на 50% от исходного размера
-      const tapeWidth = baseTapeWidth * 1.25 * 1.2 // Длина увеличена на 25%, затем еще на 20%
-      
-      // Проверяем, что ширина ленты положительная
-      if (tapeWidth > 0) {
-        // Рисуем прямоугольник для ленты
-        // Позиционируем от левой верхней точки до правой верхней точки
-        // Лента рисуется от (0, 0) до (tapeWidth, tapeHeight), где (0, 0) - левый верхний угол
-        tapeGraphics.rect(0, 0, tapeWidth, tapeHeight)
-        tapeGraphics.fill(0xFFD700) // Желтый цвет (#FFD700)
-        tapeGraphics.stroke({ width: 1, color: 0xFFA500 }) // Оранжевая обводка
+      // Создаём одну общую желтую ленту между стойками
+      if (this.leftTapeTexture) {
+        // Вычисляем расстояние между верхними точками стоек
+        const distance = Math.sqrt(
+          Math.pow(rightPostTopX - leftPostTopX, 2) + 
+          Math.pow(rightPostTopY - leftPostTopY, 2)
+        )
         
-        this.yellowTape = tapeGraphics
-        this.yellowTape.zIndex = this.zIndex + 2 // Выше стоек
-        this.yellowTape.visible = true
-        this.yellowTape.alpha = 1
+        // Вычисляем угол наклона ленты
+        const angle = Math.atan2(rightPostTopY - leftPostTopY, rightPostTopX - leftPostTopX)
         
-        // Позиционируем ленту на 35% от низа экрана
-        // Graphics не имеет anchor, поэтому позиционируем напрямую
-        // Лента рисуется от (0, 0) до (tapeWidth, tapeHeight)
-        // Позиция (x, y) - это левый верхний угол ленты
-        // Вычисляем позицию на 35% от низа экрана
+        // Вычисляем среднюю Y координату между верхними точками стоек
+        const middleY = (leftPostTopY + rightPostTopY) / 2
+        
+        // Поднимаем ленту на 10% выше относительно низа экрана
         const screenHeight = this.app.screen.height
-        // 35% от низа экрана = 65% от верха экрана
-        const targetCenterY = screenHeight * 0.65
+        const offsetFromBottom = screenHeight * 0.1 // 10% от высоты экрана
+        const adjustedY = middleY - offsetFromBottom
         
-        // Контейнер находится на позиции this.y (groundY), поэтому нужно вычислить относительную позицию
-        const tapeCenterY = targetCenterY - this.y // Относительно контейнера
-        const tapeTopY = tapeCenterY - tapeHeight / 2 // Верхний край ленты
+        // Создаем одну общую ленту
+        this.leftTape = new Sprite(this.leftTapeTexture)
+        this.leftTape.anchor.set(0, 0.5) // Якорь слева по центру
+        this.leftTape.rotation = angle
+        this.leftTape.x = leftPostTopX
+        this.leftTape.y = adjustedY // Поднята на 10% выше
+        // Масштабируем по ширине, чтобы покрыть расстояние между стойками
+        const scaleX = distance / this.leftTapeTexture.width
+        this.leftTape.scale.set(scaleX, 1)
+        this.leftTape.zIndex = this.zIndex + 2
+        this.leftTape.visible = true
+        this.leftTape.alpha = 1
+        this.container.addChild(this.leftTape)
         
-        // Устанавливаем pivot в центр ленты для правильного поворота
-        this.yellowTape.pivot.set(tapeWidth / 2, tapeHeight / 2)
+        // Правая лента использует ту же текстуру (для совместимости)
+        this.rightTape = this.leftTape
         
-        // Позиционируем центр ленты, смещая левее на 20% от размера ленты
-        const leftOffset = tapeWidth * 0.2 // 20% от длины ленты
-        this.yellowTape.x = leftPostTopX + tapeWidth / 2 - leftOffset
-        this.yellowTape.y = tapeCenterY // Центр ленты на нужной высоте
+        // Сохраняем для обратной совместимости
+        this.yellowTape = this.leftTape
         
-        // Поворачиваем ленту на 45 градусов (π/4 радиан)
-        this.yellowTape.rotation = Math.PI / 4
-        
-        // Добавляем ленту в контейнер
-        this.container.addChild(this.yellowTape)
+        // Сохраняем позиции для создания веревок при разрыве
+        // Сохраняем оригинальные позиции стоек и поднятую позицию ленты
+        this.leftPostTopX = leftPostTopX
+        this.leftPostTopY = leftPostTopY // Оригинальная позиция левой стойки
+        this.rightPostTopX = rightPostTopX
+        this.rightPostTopY = rightPostTopY // Оригинальная позиция правой стойки
+        // Сохраняем поднятую позицию ленты для точки разрыва
+        this.tapeBreakY = adjustedY
         
         console.log(`✅ Желтая лента создана:`, {
           leftPostTop: `(${leftPostTopX.toFixed(0)}, ${leftPostTopY.toFixed(0)})`,
           rightPostTop: `(${rightPostTopX.toFixed(0)}, ${rightPostTopY.toFixed(0)})`,
-          tapeWidth: `${tapeWidth.toFixed(0)}px`,
-          tapeHeight: `${tapeHeight}px`,
-          tapePosition: `(${this.yellowTape.x.toFixed(0)}, ${this.yellowTape.y.toFixed(0)})`
+          distance: `${distance.toFixed(0)}px`,
+          angle: `${(angle * 180 / Math.PI).toFixed(1)}°`,
+          tapePosition: `(${this.leftTape.x.toFixed(0)}, ${this.leftTape.y.toFixed(0)})`,
+          offsetFromBottom: `${offsetFromBottom.toFixed(0)}px (10% от высоты экрана)`,
+          originalMiddleY: `${middleY.toFixed(0)}`,
+          adjustedY: `${adjustedY.toFixed(0)}`
         })
       } else {
-        console.warn('⚠️ Не удалось создать желтую ленту: некорректная ширина', tapeWidth)
+        console.warn('⚠️ Не удалось создать ленту: текстура не загружена')
       }
       
       console.log(`✅ Спрайт угла добавлен:`, {
@@ -6119,7 +6189,19 @@ class FinishLine {
       }
     }
     
-    // Убрали обновление анимации - asset_0010.png должна оставаться статичной
+    // Обновление анимации веревок при разрыве
+    if (this.isAnimating) {
+      this.updateRopeAnimation()
+      
+      // Обновляем геометрию веревок (если autoUpdate = false, нужно вызывать вручную)
+      // При autoUpdate = true обновление происходит автоматически
+      if (this.leftRope && !this.leftRope.autoUpdate) {
+        this.leftRope.geometry.updateVertices()
+      }
+      if (this.rightRope && !this.rightRope.autoUpdate) {
+        this.rightRope.geometry.updateVertices()
+      }
+    }
     
     // Деактивация при выходе за экран
     if (this.x + this.width < -100) {
@@ -6128,22 +6210,178 @@ class FinishLine {
   }
 
   /**
+   * Создание веревки от точки разрыва к стойке
+   * @param {Texture} tapeTexture - Текстура ленты
+   * @param {Array} pointsArray - Массив точек для веревки
+   * @param {string} side - "left" или "right"
+   */
+  createRopeFromTape(tapeTexture, pointsArray, side) {
+    pointsArray.length = 0
+    
+    // Точка разрыва - середина между стойками (где игрок разорвал ленту)
+    // Используем поднятую позицию ленты для точки разрыва
+    const breakX = (this.leftPostTopX + this.rightPostTopX) / 2
+    const breakY = this.tapeBreakY || (this.leftPostTopY + this.rightPostTopY) / 2
+    
+    // Определяем начальную и конечную точки веревки
+    let startX, startY, endX, endY
+    
+    if (side === "left") {
+      // Левая веревка: от точки разрыва к левой стойке
+      startX = breakX
+      startY = breakY
+      endX = this.leftPostTopX + FINISH_ROPE_CONSTANTS.LEFT_ROPE_OFFSET_X
+      endY = this.leftPostTopY + FINISH_ROPE_CONSTANTS.LEFT_ROPE_OFFSET_Y
+    } else {
+      // Правая веревка: от точки разрыва к правой стойке
+      startX = breakX
+      startY = breakY
+      endX = this.rightPostTopX + FINISH_ROPE_CONSTANTS.RIGHT_ROPE_OFFSET_X
+      endY = this.rightPostTopY + FINISH_ROPE_CONSTANTS.RIGHT_ROPE_OFFSET_Y
+    }
+    
+    // Вычисляем расстояние между точками
+    const distance = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2))
+    
+    // Создаем точки веревки от начала к концу
+    for (let i = 0; i < FINISH_ROPE_CONSTANTS.ROPE_SEGMENTS; i++) {
+      const t = i / (FINISH_ROPE_CONSTANTS.ROPE_SEGMENTS - 1)
+      const x = startX + (endX - startX) * t
+      const y = startY + (endY - startY) * t
+      pointsArray.push(new Point(x, y))
+    }
+    
+    // Создание MeshRope
+    const rope = new MeshRope({ texture: tapeTexture, points: pointsArray })
+    rope.zIndex = this.zIndex + 2
+    rope.autoUpdate = true // Автоматическое обновление геометрии
+    this.container.addChild(rope)
+    
+    if (side === "left") {
+      this.leftRope = rope
+    } else {
+      this.rightRope = rope
+    }
+  }
+
+  /**
+   * Анимация точек веревки (физика падения)
+   * @param {Array} points - Массив точек веревки
+   * @param {Array} velocities - Массив скоростей точек
+   */
+  animateRopePoints(points, velocities) {
+    const decay = Math.exp(-this.animationTime * FINISH_ROPE_CONSTANTS.TIME_DECAY)
+    const gravity = FINISH_ROPE_CONSTANTS.GRAVITY * decay
+    const waveAmplitude = decay
+    
+    for (let i = 1; i < points.length; i++) {
+      const point = points[i]
+      const velocity = velocities[i]
+      
+      // Применяем гравитацию
+      velocity.y += gravity
+      
+      // Добавляем волновое движение
+      const wave = Math.sin(this.animationTime + i * FINISH_ROPE_CONSTANTS.WAVE_SPEED) * 2 * waveAmplitude
+      velocity.x += wave * 0.1
+      
+      // Применяем затухание
+      velocity.x *= FINISH_ROPE_CONSTANTS.DAMPING
+      velocity.y *= FINISH_ROPE_CONSTANTS.DAMPING
+      
+      // Обновляем позицию точки
+      point.x += velocity.x
+      point.y += velocity.y
+      
+      // Регулируем расстояние между соседними точками (constraint)
+      if (i > 0) {
+        const prevPoint = points[i - 1]
+        const dx = point.x - prevPoint.x
+        const dy = point.y - prevPoint.y
+        const distance = Math.sqrt(dx * dx + dy * dy)
+        const targetDistance = FINISH_ROPE_CONSTANTS.ROPE_SEGMENT_DISTANCE
+        
+        if (distance > 0) {
+          const correction = (distance - targetDistance) / distance
+          const correctionX = dx * correction * 0.5
+          const correctionY = dy * correction * 0.5
+          point.x -= correctionX
+          point.y -= correctionY
+        }
+      }
+    }
+  }
+
+  /**
+   * Обновление анимации веревок
+   */
+  updateRopeAnimation() {
+    this.animationTime += 0.05
+    
+    if (this.leftRopePoints.length > 0) {
+      this.animateRopePoints(this.leftRopePoints, this.leftVelocities)
+    }
+    if (this.rightRopePoints.length > 0) {
+      this.animateRopePoints(this.rightRopePoints, this.rightVelocities)
+    }
+    
+    // Проверка завершения анимации
+    let totalVelocity = 0
+    let count = 0
+    const allVelocities = [...this.leftVelocities, ...this.rightVelocities]
+    
+    allVelocities.forEach(vel => {
+      const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y)
+      totalVelocity += speed
+      count++
+    })
+    
+    const avgVelocity = count > 0 ? totalVelocity / count : 0
+    
+    if (avgVelocity < FINISH_ROPE_CONSTANTS.MIN_VELOCITY_THRESHOLD && 
+        this.animationTime > FINISH_ROPE_CONSTANTS.MIN_ANIMATION_TIME) {
+      this.isAnimating = false
+    }
+  }
+
+  /**
    * Разрыв ленты
-   * Лента исчезает сразу при столкновении
+   * Лента исчезает и заменяется на анимированные веревки
    */
   breakTape() {
     if (this.isBroken) return
     
     this.isBroken = true
     
-    // Скрываем ленту сразу при столкновении
-    if (this.yellowTape) {
-      this.yellowTape.visible = false
-      // Можно также удалить из контейнера, но скрытие достаточно
-      // this.container.removeChild(this.yellowTape)
+    // Скрываем спрайты лент
+    if (this.leftTape) {
+      this.leftTape.visible = false
+    }
+    if (this.rightTape) {
+      this.rightTape.visible = false
     }
     
-    console.log('🏁 Финиш пройден! Лента исчезла.')
+    // Для обратной совместимости
+    if (this.yellowTape) {
+      this.yellowTape.visible = false
+    }
+    
+    // Создаем веревки от точки разрыва к стойкам
+    if (this.leftTapeTexture && this.leftPostTopX !== undefined) {
+      this.createRopeFromTape(this.leftTapeTexture, this.leftRopePoints, "left")
+      this.createRopeFromTape(this.leftTapeTexture, this.rightRopePoints, "right")
+      
+      // Инициализируем скорости для анимации
+      this.leftVelocities = this.leftRopePoints.map(() => ({ x: 0, y: 0 }))
+      this.rightVelocities = this.rightRopePoints.map(() => ({ x: 0, y: 0 }))
+      
+      this.animationTime = 0
+      this.isAnimating = true
+      
+      console.log('🏁 Финиш пройден! Лента разорвана, веревки созданы.')
+    } else {
+      console.log('🏁 Финиш пройден! Лента исчезла.')
+    }
   }
   
   /**
