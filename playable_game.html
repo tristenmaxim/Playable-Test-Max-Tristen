@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Runner Game</title>
-  <!-- Build version: 1768898344399 -->
+  <!-- Build version: 1768915074723 -->
   
   <!-- GSAP CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
@@ -91,10 +91,10 @@
   <!-- Canvas будет добавлен через JavaScript -->
   
   <script type="module">
-// Build version: 1768898344399
+// Build version: 1768915074723
 // Force cache refresh
-console.log('🎮 Game version:', 1768898344399)
-import { Application, Container, Text, TextStyle, Sprite, Graphics, Rectangle, Assets, Texture, AnimatedSprite, Spritesheet } from 'pixi.js'
+console.log('🎮 Game version:', 1768915074723)
+import { Application, Container, Text, TextStyle, Sprite, Graphics, Rectangle, Assets, Texture, AnimatedSprite, Spritesheet, Point, RenderTexture, MeshRope } from 'pixi.js'
 
 
 // === Начало выполнения модуля ===
@@ -3120,6 +3120,13 @@ class GameController {
     // Проверка коллизий с коллекциями (не зависит от неуязвимости)
     // Используем существующий метод checkCollectibleCollisions()
     this.checkCollectibleCollisions()
+    
+    // Проверка коллизий с желтой лентой финиша
+    if (this.finishLine && this.finishLine.isActive && !this.finishLine.isBroken) {
+      if (this.finishLine.checkTapeCollision(playerHitbox)) {
+        this.finishLine.breakTape()
+      }
+    }
   }
 
   /**
@@ -5524,13 +5531,31 @@ class Obstacle {
  * Этап 13: Финишная линия появляется и завершает игру
  * 
  * Финиш состоит из:
- * - Столбы финиша (sprite)
- * - Лента между столбами (tapeSprite)
+ * - Столбы финиша и лента (asset_0010.png)
  * - Анимация разрыва ленты при достижении игроком
  */
 
 // Импорт удален - код встроен
 // Импорт удален - код встроен
+// Импорт удален - код встроен
+
+// Константы для веревки финиша (из оригинала)
+const FINISH_ROPE_CONSTANTS = {
+  ROPE_SEGMENTS: 10,
+  ROPE_LENGTH_FACTOR: 0.3,
+  GRAVITY: 0.3,
+  DAMPING: 0.95,
+  WAVE_SPEED: 0.01,
+  TIME_DECAY: 0.15,
+  MIN_VELOCITY_THRESHOLD: 0.1,
+  MIN_ANIMATION_TIME: 1,
+  ROPE_SEGMENT_DISTANCE: 10,
+  LEFT_ROPE_OFFSET_X: 0,
+  LEFT_ROPE_OFFSET_Y: 0,
+  RIGHT_ROPE_OFFSET_X: 20,
+  RIGHT_ROPE_OFFSET_Y: -20
+}
+
 class FinishLine {
   constructor(app, assetLoader, x = 0, y = 0) {
     this.app = app
@@ -5545,12 +5570,28 @@ class FinishLine {
     
     // Спрайты
     this.sprite = null // Столбы финиша (asset_0010.png)
-    this.tapeSprite = null // Лента между столбами (пока fallback, потом будет отдельная текстура)
-    this.floorPattern = null // Шахматная доска на земле (отдельный элемент с низким z-index)
+    this.tapeSprite = null // Больше не используется - лента уже в asset_0010.png
+    this.cornerSprite = null // asset_0011.png в левом верхнем углу
+    this.cornerSpriteCopy = null // Копия asset_0011.png, смещенная вправо на 20%
+    this.yellowTape = null // Желтая лента между верхними точками стоек (deprecated, используем leftTape/rightTape)
+    this.leftTape = null // Левая лента (спрайт до разрыва)
+    this.rightTape = null // Правая лента (спрайт до разрыва)
     
     // Текстуры
     this.finishTexture = null
-    this.floorPatternTexture = null
+    this.cornerTexture = null
+    this.leftTapeTexture = null // Текстура левой ленты
+    this.rightTapeTexture = null // Текстура правой ленты
+    
+    // Веревки (MeshRope) для анимации разрыва
+    this.leftRope = null
+    this.rightRope = null
+    this.leftRopePoints = []
+    this.rightRopePoints = []
+    this.leftVelocities = []
+    this.rightVelocities = []
+    this.animationTime = 0
+    this.isAnimating = false
     
     // X координата разрыва ленты (относительно игрока)
     // Когда игрок достигает этой позиции, лента разрывается
@@ -5630,16 +5671,16 @@ class FinishLine {
 
   /**
    * Загрузка текстур финиша
-   * asset_0010.png - финишная черта (столбы финиша)
-   * asset_0011.png или asset_0012.png - шахматная доска на земле
+   * asset_0010.png - шахматная доска (финишная черта)
+   * asset_0011.png - элемент в левом верхнем углу
    */
   async loadTextures() {
-    // Загружаем текстуру финиша из референса
+    // Загружаем текстуру финиша (шахматная доска)
     const finishPath = 'data:image/png;base64,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'
-    // Пробуем найти текстуру шахматной доски (может быть asset_0011 или asset_0012)
-    const floorPatternPath = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGYAAAAICAYAAAALIYpIAAAACXBIWXMAAAsTAAALEwEAmpwYAAABUklEQVRIie1VMXLEIAxcAa6S/5cp8oZ8LZUBpbhbEIqc+JrkCu/MzdhISLuL8MnH27viAdSWAQCqCaoCEYVIh2pa8rayAwD2ugEARDoAoPc8criX9UQ6Sm4jzr0WPqe2PN5ry1BNo7ddI1TllE4RDXPtekoNJbfhieVhn6nPc0ipLT5afaubRgwLRii5QaSPYiU3qMq9QV+MofElt8VQG/PP5EABrO3j3gzWqS2PQyXXrewLr9n3eC6nWWp+PcxVTaOv1UndcwBl2WM12jrFCmVBb2B0SLdJWeMi+m2aI7HRJHKi9mpvIo1Iy83a68zlbbVxO4GTa15uK7mwvuc0684vwm1AplZqJHfyoJd+eHwP+2759m4Oxh+GxVFsWQ9yZnzGoqn1OT/Horzf4ncuhxrPrJ/l53qe6h/sfX35PJ184e8Q/sdc+H9cB/OkuA7mSfEFIxH2Aq2mld0AAAAASUVORK5CYII='
+    // Загружаем текстуру для левого верхнего угла
+    const cornerPath = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGYAAAAICAYAAAALIYpIAAAACXBIWXMAAAsTAAALEwEAmpwYAAABUklEQVRIie1VMXLEIAxcAa6S/5cp8oZ8LZUBpbhbEIqc+JrkCu/MzdhISLuL8MnH27viAdSWAQCqCaoCEYVIh2pa8rayAwD2ugEARDoAoPc8criX9UQ6Sm4jzr0WPqe2PN5ry1BNo7ddI1TllE4RDXPtekoNJbfhieVhn6nPc0ipLT5afaubRgwLRii5QaSPYiU3qMq9QV+MofElt8VQG/PP5EABrO3j3gzWqS2PQyXXrewLr9n3eC6nWWp+PcxVTaOv1UndcwBl2WM12jrFCmVBb2B0SLdJWeMi+m2aI7HRJHKi9mpvIo1Iy83a68zlbbVxO4GTa15uK7mwvuc0684vwm1AplZqJHfyoJd+eHwP+2759m4Oxh+GxVFsWQ9yZnzGoqn1OT/Horzf4ncuhxrPrJ/l53qe6h/sfX35PJ184e8Q/sdc+H9cB/OkuA7mSfEFIxH2Aq2mld0AAAAASUVORK5CYII='
     
-    console.log('🔄 Загрузка текстур финиша:', { finishPath, floorPatternPath })
+    console.log('🔄 Загрузка текстур финиша:', { finishPath, cornerPath })
     
     try {
       this.finishTexture = await this.assetLoader.loadTexture(finishPath)
@@ -5658,16 +5699,54 @@ class FinishLine {
       this.finishTexture = null
     }
     
-    // Загружаем текстуру шахматной доски
+    // Загружаем текстуру для левого верхнего угла
     try {
-      this.floorPatternTexture = await this.assetLoader.loadTexture(floorPatternPath)
-      console.log(`✅ Текстура шахматной доски загружена:`, {
-        width: this.floorPatternTexture.width,
-        height: this.floorPatternTexture.height
+      this.cornerTexture = await this.assetLoader.loadTexture(cornerPath)
+      console.log(`✅ Текстура угла загружена успешно:`, {
+        width: this.cornerTexture.width,
+        height: this.cornerTexture.height,
+        valid: this.cornerTexture.width > 0 && this.cornerTexture.height > 0
       })
     } catch (error) {
-      console.warn('⚠️ Не удалось загрузить текстуру шахматной доски, создадим fallback')
-      this.floorPatternTexture = null
+      console.warn('⚠️ Не удалось загрузить текстуру угла (asset_0011.png):', error)
+      this.cornerTexture = null
+    }
+    
+    // Создаем текстуры для лент (желтые прямоугольники)
+    // В оригинале используются asset_0013.png (левая) и asset_0014.png (правая)
+    // Создаем программно через Graphics и RenderTexture
+    try {
+      const tapeWidth = 100
+      const tapeHeight = 8
+      
+      // Создаем желтую текстуру для левой ленты
+      const leftTapeGraphics = new Graphics()
+      leftTapeGraphics.rect(0, 0, tapeWidth, tapeHeight)
+      leftTapeGraphics.fill(0xFFD700) // Желтый цвет (#FFD700)
+      leftTapeGraphics.stroke({ width: 1, color: 0xFFA500 }) // Оранжевая обводка
+      
+      const leftRenderTexture = RenderTexture.create({ width: tapeWidth, height: tapeHeight })
+      this.app.renderer.render(leftTapeGraphics, { renderTexture: leftRenderTexture })
+      this.leftTapeTexture = leftRenderTexture
+      
+      // Создаем желтую текстуру для правой ленты
+      const rightTapeGraphics = new Graphics()
+      rightTapeGraphics.rect(0, 0, tapeWidth, tapeHeight)
+      rightTapeGraphics.fill(0xFFD700)
+      rightTapeGraphics.stroke({ width: 1, color: 0xFFA500 })
+      
+      const rightRenderTexture = RenderTexture.create({ width: tapeWidth, height: tapeHeight })
+      this.app.renderer.render(rightTapeGraphics, { renderTexture: rightRenderTexture })
+      this.rightTapeTexture = rightRenderTexture
+      
+      console.log(`✅ Текстуры лент созданы:`, {
+        leftTapeTexture: `${this.leftTapeTexture.width}x${this.leftTapeTexture.height}`,
+        rightTapeTexture: `${this.rightTapeTexture.width}x${this.rightTapeTexture.height}`
+      })
+    } catch (error) {
+      console.error('❌ Ошибка создания текстур лент:', error)
+      this.leftTapeTexture = null
+      this.rightTapeTexture = null
     }
   }
 
@@ -5694,49 +5773,8 @@ class FinishLine {
     this.container.visible = true
     this.container.alpha = 1
     
-    // Референс: floorPattern.y = a - 80, где a = Me - oe.GROUND_Y (roadY)
-    // Шахматная доска должна быть на земле ПОД игроком с z-index 5
-    // Создаём шахматную доску на земле
-    if (this.floorPatternTexture) {
-      this.floorPattern = new Sprite(this.floorPatternTexture)
-      this.floorPattern.anchor.set(0.5, 0.5) // Центр (как в референсе)
-      this.floorPattern.scale.set(2) // Референс: scale.set(2)
-      this.floorPattern.zIndex = CONSTANTS.Z_INDEX.FINISH_LINE_GROUND // z-index 5 в оригинале, у нас 15
-      this.floorPattern.visible = true
-      this.floorPattern.alpha = 1
-      // Позиция: на земле, немного выше roadY (y = roadY - 80 в оригинале)
-      // Но так как контейнер уже на roadY, позиция относительно контейнера будет отрицательной
-      this.floorPattern.x = 0 // Центр по X
-      this.floorPattern.y = -80 // На 80px выше roadY (относительно контейнера)
-      this.container.addChild(this.floorPattern)
-    } else {
-      // Fallback - создаём шахматную доску через Graphics
-      const checkerboardSize = 200
-      const checkerSize = 20
-      const checkerboardGraphics = new Graphics()
-      
-      // Рисуем шахматную доску
-      for (let i = 0; i < checkerboardSize / checkerSize; i++) {
-        for (let j = 0; j < checkerboardSize / checkerSize; j++) {
-          const color = (i + j) % 2 === 0 ? 0xFFFFFF : 0x000000
-          checkerboardGraphics.rect(
-            -checkerboardSize / 2 + i * checkerSize,
-            -checkerboardSize / 2 + j * checkerSize,
-            checkerSize,
-            checkerSize
-          )
-          checkerboardGraphics.fill(color)
-        }
-      }
-      
-      this.floorPattern = checkerboardGraphics
-      this.floorPattern.zIndex = CONSTANTS.Z_INDEX.FINISH_LINE_GROUND
-      this.floorPattern.visible = true
-      this.floorPattern.alpha = 1
-      this.floorPattern.x = 0
-      this.floorPattern.y = -80
-      this.container.addChild(this.floorPattern)
-    }
+    // Убрали шахматную доску на земле (asset_0011.png) - это был лишний ассет
+    // Оставляем только asset_0010.png (столбы финиша)
     
     // Создаём спрайт финиша из текстуры (как в референсе)
     // Столбы должны быть выше шахматной доски, но все равно под игроком
@@ -5788,53 +5826,213 @@ class FinishLine {
       comparison: `Финиш масштабирован в ${(0.54 / FINISH_SCALE).toFixed(2)} раза меньше игрока`
     })
     
-    // Лента между столбами (fallback - простой прямоугольник, пока нет текстуры)
-    // Ширина ленты должна быть примерно равна ширине финиша
-    const finishWidth = this.sprite.width // Используем уже масштабированную ширину
-    const tapeWidth = finishWidth * 0.8 // Лента немного уже финиша
-    const tapeHeight = 20 // Высота ленты
-    const tapeGraphics = new Graphics()
-    tapeGraphics.rect(-tapeWidth / 2, -tapeHeight / 2, tapeWidth, tapeHeight)
-    tapeGraphics.fill(0xFFD700) // Золотой цвет
-    tapeGraphics.stroke({ width: 2, color: 0xFFA500 }) // Оранжевая обводка
-    
-    // Создаём спрайт ленты
-    this.tapeSprite = tapeGraphics
-    // Anchor (0.5, 0.5) - центр (для Graphics это через позиционирование)
-    this.tapeSprite.zIndex = this.zIndex + 1 // Лента выше столбов
-    
-    // Позиция ленты (выше финиша)
-    // Используем высоту спрайта финиша для позиционирования ленты (уже масштабированную)
-    // Референс: лента должна быть примерно на уровне пояса игрока
-    const finishHeight = this.sprite.height
-    // Лента должна быть в верхней части финиша, примерно на 70-80% высоты от низа
-    const tapeYOffset = -finishHeight * 0.75 // Лента на 75% высоты финиша от низа
+    // Убрали программно созданную ленту (tapeSprite) - лента уже в asset_0010.png
+    // Оставляем только asset_0010.png со столбами и лентой
     
     // Позиционируем столбы (anchor 0.5, 1 - центр по X, низ по Y)
     this.sprite.x = 0
     this.sprite.y = 0 // Низ столбов в точке (0, 0) контейнера
     
-    // Добавляем спрайты в контейнер
+    // Добавляем спрайт финиша в контейнер
     this.container.addChild(this.sprite)
-    this.container.addChild(this.tapeSprite)
+    
+    // Создаём спрайт для левого верхнего угла (asset_0011.png)
+    if (this.cornerTexture) {
+      this.cornerSprite = new Sprite(this.cornerTexture)
+      // Anchor (0, 0) - левый верхний угол для точного позиционирования
+      this.cornerSprite.anchor.set(0, 0)
+      this.cornerSprite.zIndex = this.zIndex + 1 // Выше основного спрайта
+      this.cornerSprite.visible = true
+      this.cornerSprite.alpha = 1
+      
+      // Поворачиваем на -90 градусов (-π/2 радиан) для вертикальной ориентации вверх
+      // Отрицательный угол поворачивает против часовой стрелки, чтобы спрайт смотрел вверх
+      this.cornerSprite.rotation = -Math.PI / 2
+      
+      // Уменьшаем размер стойки до 65% от текущего (высота и ширина)
+      this.cornerSprite.scale.set(0.65, 0.65)
+      
+      // Позиционируем в левом верхнем углу asset_0010.png
+      // asset_0010.png имеет anchor (0.5, 1), поэтому:
+      // - Левый край: x = -width/2
+      // - Верхний край: y = -height
+      const spriteLeft = -this.sprite.width / 2
+      const spriteTop = -this.sprite.height
+      
+      // После поворота на -90 градусов, спрайт будет смотреть вверх
+      // Поворот происходит вокруг anchor (0, 0), поэтому левый верхний угол остается на месте
+      // Масштабирование также происходит относительно anchor (0, 0), поэтому позиция остается той же
+      this.cornerSprite.x = spriteLeft
+      this.cornerSprite.y = spriteTop
+      
+      // Добавляем в контейнер
+      this.container.addChild(this.cornerSprite)
+      
+      // Создаём копию asset_0011.png и смещаем вправо на 20% относительно asset_0010.png
+      this.cornerSpriteCopy = new Sprite(this.cornerTexture)
+      this.cornerSpriteCopy.anchor.set(0, 0)
+      this.cornerSpriteCopy.zIndex = this.zIndex + 1 // Выше основного спрайта
+      this.cornerSpriteCopy.visible = true
+      this.cornerSpriteCopy.alpha = 1
+      
+      // Поворачиваем на -90 градусов для вертикальной ориентации вверх (как оригинал)
+      this.cornerSpriteCopy.rotation = -Math.PI / 2
+      
+      // Уменьшаем размер копии стойки до 65% от текущего (высота и ширина)
+      this.cornerSpriteCopy.scale.set(0.65, 0.65)
+      
+      // Смещаем вправо на 16% ширины asset_0010.png (ближе к левому краю)
+      const offsetRight = this.sprite.width * 0.16
+      this.cornerSpriteCopy.x = spriteLeft + offsetRight
+      
+      // Опускаем ниже нижнего края asset_0010.png, ближе к нижнему левому углу
+      // asset_0010.png имеет anchor (0.5, 1), поэтому его нижний край на y = 0
+      // Чтобы опустить копию ниже, нужно сместить её вниз от нижнего края
+      // Добавляем небольшое смещение вниз для более точного позиционирования в углу
+      // После масштабирования высота изменилась, поэтому используем масштабированную высоту
+      const offsetDown = 10 // Небольшое смещение вниз в пикселях
+      this.cornerSpriteCopy.y = -this.cornerSpriteCopy.height + offsetDown
+      
+      // Добавляем копию в контейнер
+      this.container.addChild(this.cornerSpriteCopy)
+      
+      // Создаём желтую ленту между верхними точками стоек
+      // Учитываем, что стойки повернуты на -90 градусов и масштабированы до 65%
+      // После поворота на -90 градусов вокруг anchor (0, 0):
+      // - Исходная ширина текстуры становится высотой повернутого спрайта
+      // - Исходная высота текстуры становится шириной повернутого спрайта
+      // Anchor (0, 0) означает левый верхний угол исходной текстуры
+      // После поворота на -90 градусов против часовой стрелки:
+      // - Левый верхний угол (anchor) остается на месте (cornerSprite.x, cornerSprite.y)
+      // - Верхняя точка будет справа от anchor на расстоянии исходная_ширина * масштаб
+      // Используем реальные размеры повернутого и масштабированного спрайта
+      // После поворота на -90 градусов и масштабирования до 0.65:
+      // - cornerSprite.height уже содержит масштабированную высоту
+      // - Высота = исходная_ширина_текстуры * 0.65
+      // Используем реальную высоту спрайта (она уже масштабирована)
+      const leftPostHeight = this.cornerSprite.height
+      const rightPostHeight = this.cornerSpriteCopy.height
+      
+      // Верхняя точка левой стойки (оригинал asset_0011)
+      // После поворота на -90 градусов против часовой стрелки вокруг anchor (0, 0):
+      // - Anchor точка (cornerSprite.x, cornerSprite.y) остается на месте
+      // - Исходный спрайт был горизонтальным, после поворота стал вертикальным
+      // - После поворота на -90 градусов против часовой стрелки:
+      //   * Исходная ширина текстуры становится высотой повернутого спрайта
+      //   * Исходная высота текстуры становится шириной повернутого спрайта
+      // - Anchor (0, 0) означает левый верхний угол исходной текстуры
+      // - После поворота, anchor точка становится ЛЕВЫМ ВЕРХНИМ углом повернутого спрайта
+      // - Верхняя точка повернутого спрайта находится справа от anchor на расстоянии высоты
+      // - X координата верхней точки = cornerSprite.x + высота_повернутого_спрайта
+      // - Y координата верхней точки = cornerSprite.y (та же, что и anchor - это ВЕРХНЯЯ точка)
+      const leftPostTopX = this.cornerSprite.x + leftPostHeight
+      const leftPostTopY = this.cornerSprite.y // Y координата верхней точки (та же, что и anchor)
+      
+      // Верхняя точка правой стойки (копия asset_0011)
+      const rightPostTopX = this.cornerSpriteCopy.x + rightPostHeight
+      const rightPostTopY = this.cornerSpriteCopy.y // Y координата остается той же (верхняя точка)
+      
+      console.log(`🔍 Вычисление верхних точек стоек:`, {
+        cornerTextureSize: `${this.cornerTexture.width}x${this.cornerTexture.height}`,
+        leftPostSpriteSize: `${this.cornerSprite.width.toFixed(0)}x${this.cornerSprite.height.toFixed(0)}`,
+        leftPostPosition: `(${this.cornerSprite.x.toFixed(0)}, ${this.cornerSprite.y.toFixed(0)})`,
+        leftPostHeight: `${leftPostHeight.toFixed(0)}px`,
+        leftPostTop: `(${leftPostTopX.toFixed(0)}, ${leftPostTopY.toFixed(0)})`,
+        rightPostSpriteSize: `${this.cornerSpriteCopy.width.toFixed(0)}x${this.cornerSpriteCopy.height.toFixed(0)}`,
+        rightPostPosition: `(${this.cornerSpriteCopy.x.toFixed(0)}, ${this.cornerSpriteCopy.y.toFixed(0)})`,
+        rightPostHeight: `${rightPostHeight.toFixed(0)}px`,
+        rightPostTop: `(${rightPostTopX.toFixed(0)}, ${rightPostTopY.toFixed(0)})`
+      })
+      
+      // Создаём одну общую желтую ленту между стойками
+      if (this.leftTapeTexture) {
+        // Вычисляем расстояние между верхними точками стоек
+        const distance = Math.sqrt(
+          Math.pow(rightPostTopX - leftPostTopX, 2) + 
+          Math.pow(rightPostTopY - leftPostTopY, 2)
+        )
+        
+        // Вычисляем угол наклона ленты
+        const angle = Math.atan2(rightPostTopY - leftPostTopY, rightPostTopX - leftPostTopX)
+        
+        // Вычисляем среднюю Y координату между верхними точками стоек
+        const middleY = (leftPostTopY + rightPostTopY) / 2
+        
+        // Поднимаем ленту на 10% выше относительно низа экрана
+        const screenHeight = this.app.screen.height
+        const offsetFromBottom = screenHeight * 0.1 // 10% от высоты экрана
+        const adjustedY = middleY - offsetFromBottom
+        
+        // Создаем одну общую ленту
+        this.leftTape = new Sprite(this.leftTapeTexture)
+        this.leftTape.anchor.set(0, 0.5) // Якорь слева по центру
+        this.leftTape.rotation = angle
+        this.leftTape.x = leftPostTopX
+        this.leftTape.y = adjustedY // Поднята на 10% выше
+        // Масштабируем по ширине, чтобы покрыть расстояние между стойками
+        const scaleX = distance / this.leftTapeTexture.width
+        this.leftTape.scale.set(scaleX, 1)
+        this.leftTape.zIndex = this.zIndex + 2
+        this.leftTape.visible = true
+        this.leftTape.alpha = 1
+        this.container.addChild(this.leftTape)
+        
+        // Правая лента использует ту же текстуру (для совместимости)
+        this.rightTape = this.leftTape
+        
+        // Сохраняем для обратной совместимости
+        this.yellowTape = this.leftTape
+        
+        // Сохраняем позиции для создания веревок при разрыве
+        // Сохраняем оригинальные позиции стоек и поднятую позицию ленты
+        this.leftPostTopX = leftPostTopX
+        this.leftPostTopY = leftPostTopY // Оригинальная позиция левой стойки
+        this.rightPostTopX = rightPostTopX
+        this.rightPostTopY = rightPostTopY // Оригинальная позиция правой стойки
+        // Сохраняем поднятую позицию ленты для точки разрыва
+        this.tapeBreakY = adjustedY
+        
+        console.log(`✅ Желтая лента создана:`, {
+          leftPostTop: `(${leftPostTopX.toFixed(0)}, ${leftPostTopY.toFixed(0)})`,
+          rightPostTop: `(${rightPostTopX.toFixed(0)}, ${rightPostTopY.toFixed(0)})`,
+          distance: `${distance.toFixed(0)}px`,
+          angle: `${(angle * 180 / Math.PI).toFixed(1)}°`,
+          tapePosition: `(${this.leftTape.x.toFixed(0)}, ${this.leftTape.y.toFixed(0)})`,
+          offsetFromBottom: `${offsetFromBottom.toFixed(0)}px (10% от высоты экрана)`,
+          originalMiddleY: `${middleY.toFixed(0)}`,
+          adjustedY: `${adjustedY.toFixed(0)}`
+        })
+      } else {
+        console.warn('⚠️ Не удалось создать ленту: текстура не загружена')
+      }
+      
+      console.log(`✅ Спрайт угла добавлен:`, {
+        cornerTextureSize: `${this.cornerTexture.width}x${this.cornerTexture.height}`,
+        cornerPosition: `(${spriteLeft.toFixed(0)}, ${spriteTop.toFixed(0)})`,
+        cornerCopyPosition: `(${(spriteLeft + offsetRight).toFixed(0)}, ${(-this.cornerSpriteCopy.height + offsetDown).toFixed(0)})`,
+        offsetRight: `${offsetRight.toFixed(0)}px (16% от ширины)`,
+        offsetDown: `${offsetDown.toFixed(0)}px`,
+        cornerCopyHeight: `${this.cornerSpriteCopy.height.toFixed(0)}px`,
+        spriteSize: `${this.sprite.width.toFixed(0)}x${this.sprite.height.toFixed(0)}`,
+        spriteBottom: 'y = 0 (нижний край asset_0010.png)',
+        spriteLeft: `x = ${spriteLeft.toFixed(0)} (левый край asset_0010.png)`
+      })
+    }
     
     // Сохраняем размеры для коллизий
     this.width = this.sprite.width
     this.height = this.sprite.height
     
-    // Устанавливаем позицию ленты относительно столбов
-    this.tapeSprite.x = 0 // Центр по X (как столбы)
-    this.tapeSprite.y = tapeYOffset // Выше столбов
+    // tapeSprite больше не используется - лента уже в asset_0010.png
+    this.tapeSprite = null
     
     // Убеждаемся, что контейнер видим
     this.container.visible = true
     this.container.alpha = 1
     
-    // Убеждаемся, что спрайты видимы
-    this.sprite.visible = true
-    this.sprite.alpha = 1
-    this.tapeSprite.visible = true
-    this.tapeSprite.alpha = 1
+      // Убеждаемся, что спрайт видим
+      this.sprite.visible = true
+      this.sprite.alpha = 1
     
     console.log(`✅ Финишная линия создана:`, {
       textureSize: `${this.finishTexture.width}x${this.finishTexture.height}`,
@@ -5842,22 +6040,24 @@ class FinishLine {
       scale: FINISH_SCALE.toFixed(2),
       width: this.width.toFixed(0),
       height: this.height.toFixed(0),
-      tapeYOffset: tapeYOffset.toFixed(0),
       containerVisible: this.container.visible,
       containerAlpha: this.container.alpha,
-      floorPatternVisible: this.floorPattern?.visible,
-      floorPatternZIndex: this.floorPattern?.zIndex,
-      floorPatternY: this.floorPattern?.y,
       spriteVisible: this.sprite.visible,
       spriteAlpha: this.sprite.alpha,
       spriteZIndex: this.sprite.zIndex,
       spriteX: this.sprite.x,
       spriteY: this.sprite.y,
-      tapeSpriteVisible: this.tapeSprite.visible,
-      tapeSpriteAlpha: this.tapeSprite.alpha,
-      tapeSpriteX: this.tapeSprite.x,
-      tapeSpriteY: this.tapeSprite.y,
-      childrenCount: this.container.children.length
+      cornerSprite: this.cornerSprite ? '✅' : '❌',
+      cornerSpriteVisible: this.cornerSprite?.visible,
+      cornerSpritePosition: this.cornerSprite ? `(${this.cornerSprite.x.toFixed(0)}, ${this.cornerSprite.y.toFixed(0)})` : 'N/A',
+        cornerSpriteCopy: this.cornerSpriteCopy ? '✅' : '❌',
+        cornerSpriteCopyVisible: this.cornerSpriteCopy?.visible,
+        cornerSpriteCopyPosition: this.cornerSpriteCopy ? `(${this.cornerSpriteCopy.x.toFixed(0)}, ${this.cornerSpriteCopy.y.toFixed(0)})` : 'N/A',
+        yellowTape: this.yellowTape ? '✅' : '❌',
+        yellowTapeVisible: this.yellowTape?.visible,
+        yellowTapePosition: this.yellowTape ? `(${this.yellowTape.x.toFixed(0)}, ${this.yellowTape.y.toFixed(0)})` : 'N/A',
+        yellowTapeWidth: this.yellowTape ? `${this.yellowTape.width.toFixed(0)}px` : 'N/A',
+        childrenCount: this.container.children.length
     })
   }
 
@@ -5904,33 +6104,8 @@ class FinishLine {
     this.container.visible = true
     this.container.alpha = 1
     
-    // Референс: floorPattern.y = a - 80, где a = roadY
-    // Шахматная доска должна быть на земле ПОД игроком
-    const checkerboardSize = 200
-    const checkerSize = 20
-    const checkerboardGraphics = new Graphics()
-    
-    // Рисуем шахматную доску (fallback)
-    for (let i = 0; i < checkerboardSize / checkerSize; i++) {
-      for (let j = 0; j < checkerboardSize / checkerSize; j++) {
-        const color = (i + j) % 2 === 0 ? 0xFFFFFF : 0x000000
-        checkerboardGraphics.rect(
-          -checkerboardSize / 2 + i * checkerSize,
-          -checkerboardSize / 2 + j * checkerSize,
-          checkerSize,
-          checkerSize
-        )
-        checkerboardGraphics.fill(color)
-      }
-    }
-    
-    this.floorPattern = checkerboardGraphics
-    this.floorPattern.zIndex = CONSTANTS.Z_INDEX.FINISH_LINE_GROUND // Низкий z-index (15), под игроком
-    this.floorPattern.visible = true
-    this.floorPattern.alpha = 1
-    this.floorPattern.x = 0
-    this.floorPattern.y = -80 // На 80px выше roadY (относительно контейнера)
-    this.container.addChild(this.floorPattern)
+    // Убрали шахматную доску (asset_0011.png) - это был лишний ассет
+    // Оставляем только столбы финиша
     
     // Fallback - простые прямоугольники для столбов
     const finishWidth = 100
@@ -5956,22 +6131,12 @@ class FinishLine {
     this.sprite.visible = true
     this.sprite.alpha = 1
     
-    // Лента (fallback)
-    const tapeGraphics = new Graphics()
-    tapeGraphics.rect(-tapeWidth / 2, -tapeHeight / 2, tapeWidth, tapeHeight)
-    tapeGraphics.fill(0xFFD700) // Золотой цвет
-    tapeGraphics.stroke({ width: 2, color: 0xFFA500 }) // Оранжевая обводка
-    
-    this.tapeSprite = tapeGraphics
-    this.tapeSprite.zIndex = this.zIndex + 1
-    this.tapeSprite.x = 0
-    this.tapeSprite.y = -finishHeight + 100
-    this.tapeSprite.visible = true
-    this.tapeSprite.alpha = 1
-    
-    // Добавляем в правильном порядке: сначала шахматная доска (низкий z-index), потом столбы и лента
+    // Убрали программно созданную ленту - лента уже в asset_0010.png
+    // Добавляем только спрайт финиша
     this.container.addChild(this.sprite)
-    this.container.addChild(this.tapeSprite)
+    
+    // tapeSprite больше не используется
+    this.tapeSprite = null
     
     this.width = finishWidth * 2 + 40 // Ширина обоих столбов
     this.height = finishHeight
@@ -5980,10 +6145,7 @@ class FinishLine {
       width: this.width,
       height: this.height,
       containerVisible: this.container.visible,
-      floorPatternVisible: this.floorPattern?.visible,
       spriteVisible: this.sprite.visible,
-      tapeSpriteVisible: this.tapeSprite.visible,
-      floorPatternZIndex: this.floorPattern?.zIndex,
       spriteZIndex: this.sprite.zIndex
     })
   }
@@ -6027,9 +6189,18 @@ class FinishLine {
       }
     }
     
-    // Обновление анимации разрыва ленты
-    if (this.breakAnimation.isAnimating) {
-      this.updateBreakAnimation(deltaMS)
+    // Обновление анимации веревок при разрыве
+    if (this.isAnimating) {
+      this.updateRopeAnimation()
+      
+      // Обновляем геометрию веревок (если autoUpdate = false, нужно вызывать вручную)
+      // При autoUpdate = true обновление происходит автоматически
+      if (this.leftRope && !this.leftRope.autoUpdate) {
+        this.leftRope.geometry.updateVertices()
+      }
+      if (this.rightRope && !this.rightRope.autoUpdate) {
+        this.rightRope.geometry.updateVertices()
+      }
     }
     
     // Деактивация при выходе за экран
@@ -6039,62 +6210,209 @@ class FinishLine {
   }
 
   /**
+   * Создание веревки от точки разрыва к стойке
+   * @param {Texture} tapeTexture - Текстура ленты
+   * @param {Array} pointsArray - Массив точек для веревки
+   * @param {string} side - "left" или "right"
+   */
+  createRopeFromTape(tapeTexture, pointsArray, side) {
+    pointsArray.length = 0
+    
+    // Точка разрыва - середина между стойками (где игрок разорвал ленту)
+    // Используем поднятую позицию ленты для точки разрыва
+    const breakX = (this.leftPostTopX + this.rightPostTopX) / 2
+    const breakY = this.tapeBreakY || (this.leftPostTopY + this.rightPostTopY) / 2
+    
+    // Определяем начальную и конечную точки веревки
+    let startX, startY, endX, endY
+    
+    if (side === "left") {
+      // Левая веревка: от точки разрыва к левой стойке
+      startX = breakX
+      startY = breakY
+      endX = this.leftPostTopX + FINISH_ROPE_CONSTANTS.LEFT_ROPE_OFFSET_X
+      endY = this.leftPostTopY + FINISH_ROPE_CONSTANTS.LEFT_ROPE_OFFSET_Y
+    } else {
+      // Правая веревка: от точки разрыва к правой стойке
+      startX = breakX
+      startY = breakY
+      endX = this.rightPostTopX + FINISH_ROPE_CONSTANTS.RIGHT_ROPE_OFFSET_X
+      endY = this.rightPostTopY + FINISH_ROPE_CONSTANTS.RIGHT_ROPE_OFFSET_Y
+    }
+    
+    // Вычисляем расстояние между точками
+    const distance = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2))
+    
+    // Создаем точки веревки от начала к концу
+    for (let i = 0; i < FINISH_ROPE_CONSTANTS.ROPE_SEGMENTS; i++) {
+      const t = i / (FINISH_ROPE_CONSTANTS.ROPE_SEGMENTS - 1)
+      const x = startX + (endX - startX) * t
+      const y = startY + (endY - startY) * t
+      pointsArray.push(new Point(x, y))
+    }
+    
+    // Создание MeshRope
+    const rope = new MeshRope({ texture: tapeTexture, points: pointsArray })
+    rope.zIndex = this.zIndex + 2
+    rope.autoUpdate = true // Автоматическое обновление геометрии
+    this.container.addChild(rope)
+    
+    if (side === "left") {
+      this.leftRope = rope
+    } else {
+      this.rightRope = rope
+    }
+  }
+
+  /**
+   * Анимация точек веревки (физика падения)
+   * @param {Array} points - Массив точек веревки
+   * @param {Array} velocities - Массив скоростей точек
+   */
+  animateRopePoints(points, velocities) {
+    const decay = Math.exp(-this.animationTime * FINISH_ROPE_CONSTANTS.TIME_DECAY)
+    const gravity = FINISH_ROPE_CONSTANTS.GRAVITY * decay
+    const waveAmplitude = decay
+    
+    for (let i = 1; i < points.length; i++) {
+      const point = points[i]
+      const velocity = velocities[i]
+      
+      // Применяем гравитацию
+      velocity.y += gravity
+      
+      // Добавляем волновое движение
+      const wave = Math.sin(this.animationTime + i * FINISH_ROPE_CONSTANTS.WAVE_SPEED) * 2 * waveAmplitude
+      velocity.x += wave * 0.1
+      
+      // Применяем затухание
+      velocity.x *= FINISH_ROPE_CONSTANTS.DAMPING
+      velocity.y *= FINISH_ROPE_CONSTANTS.DAMPING
+      
+      // Обновляем позицию точки
+      point.x += velocity.x
+      point.y += velocity.y
+      
+      // Регулируем расстояние между соседними точками (constraint)
+      if (i > 0) {
+        const prevPoint = points[i - 1]
+        const dx = point.x - prevPoint.x
+        const dy = point.y - prevPoint.y
+        const distance = Math.sqrt(dx * dx + dy * dy)
+        const targetDistance = FINISH_ROPE_CONSTANTS.ROPE_SEGMENT_DISTANCE
+        
+        if (distance > 0) {
+          const correction = (distance - targetDistance) / distance
+          const correctionX = dx * correction * 0.5
+          const correctionY = dy * correction * 0.5
+          point.x -= correctionX
+          point.y -= correctionY
+        }
+      }
+    }
+  }
+
+  /**
+   * Обновление анимации веревок
+   */
+  updateRopeAnimation() {
+    this.animationTime += 0.05
+    
+    if (this.leftRopePoints.length > 0) {
+      this.animateRopePoints(this.leftRopePoints, this.leftVelocities)
+    }
+    if (this.rightRopePoints.length > 0) {
+      this.animateRopePoints(this.rightRopePoints, this.rightVelocities)
+    }
+    
+    // Проверка завершения анимации
+    let totalVelocity = 0
+    let count = 0
+    const allVelocities = [...this.leftVelocities, ...this.rightVelocities]
+    
+    allVelocities.forEach(vel => {
+      const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y)
+      totalVelocity += speed
+      count++
+    })
+    
+    const avgVelocity = count > 0 ? totalVelocity / count : 0
+    
+    if (avgVelocity < FINISH_ROPE_CONSTANTS.MIN_VELOCITY_THRESHOLD && 
+        this.animationTime > FINISH_ROPE_CONSTANTS.MIN_ANIMATION_TIME) {
+      this.isAnimating = false
+    }
+  }
+
+  /**
    * Разрыв ленты
-   * Запускает анимацию разрыва ленты
+   * Лента исчезает и заменяется на анимированные веревки
    */
   breakTape() {
     if (this.isBroken) return
     
     this.isBroken = true
     
-    // Инициализация анимации разрыва
-    this.breakAnimation.isAnimating = true
-    this.breakAnimation.startTime = Date.now()
-    this.breakAnimation.startY = this.tapeSprite.y
-    this.breakAnimation.startRotation = this.tapeSprite.rotation || 0
+    // Скрываем спрайты лент
+    if (this.leftTape) {
+      this.leftTape.visible = false
+    }
+    if (this.rightTape) {
+      this.rightTape.visible = false
+    }
     
-    // Случайный поворот (от -10 до +10 градусов, как в референсе)
-    const randomRotation = (Math.random() * 20 - 10) * (Math.PI / 180) // Конвертируем в радианы
-    this.breakAnimation.targetRotation = randomRotation
+    // Для обратной совместимости
+    if (this.yellowTape) {
+      this.yellowTape.visible = false
+    }
     
-    // Подъём вверх на 50px (как в референсе)
-    this.breakAnimation.targetY = this.breakAnimation.startY - 50
+    // Создаем веревки от точки разрыва к стойкам
+    if (this.leftTapeTexture && this.leftPostTopX !== undefined) {
+      this.createRopeFromTape(this.leftTapeTexture, this.leftRopePoints, "left")
+      this.createRopeFromTape(this.leftTapeTexture, this.rightRopePoints, "right")
+      
+      // Инициализируем скорости для анимации
+      this.leftVelocities = this.leftRopePoints.map(() => ({ x: 0, y: 0 }))
+      this.rightVelocities = this.rightRopePoints.map(() => ({ x: 0, y: 0 }))
+      
+      this.animationTime = 0
+      this.isAnimating = true
+      
+      console.log('🏁 Финиш пройден! Лента разорвана, веревки созданы.')
+    } else {
+      console.log('🏁 Финиш пройден! Лента исчезла.')
+    }
+  }
+  
+  /**
+   * Проверка коллизии игрока с желтой лентой
+   * @param {Object} playerHitbox - Хитбокс игрока { x, y, width, height }
+   * @returns {boolean} true если есть коллизия
+   */
+  checkTapeCollision(playerHitbox) {
+    if (!this.yellowTape || !this.yellowTape.visible || this.isBroken) {
+      return false
+    }
     
-    console.log('🏁 Лента финиша разорвана!')
+    // Получаем глобальные координаты ленты
+    const tapeBounds = this.yellowTape.getBounds()
+    
+    // Проверяем пересечение прямоугольников
+    return rectanglesIntersect(playerHitbox, {
+      x: tapeBounds.x,
+      y: tapeBounds.y,
+      width: tapeBounds.width,
+      height: tapeBounds.height
+    })
   }
 
   /**
    * Обновление анимации разрыва ленты
-   * Простая анимация через изменение свойств спрайта
+   * УБРАНО - asset_0010.png (шахматная доска) должна оставаться статичной без анимации
    * @param {number} deltaMS - Время с последнего кадра
    */
   updateBreakAnimation(deltaMS) {
-    if (!this.tapeSprite || !this.breakAnimation.isAnimating) return
-    
-    const elapsed = Date.now() - this.breakAnimation.startTime
-    const progress = Math.min(elapsed / this.breakAnimation.duration, 1) // От 0 до 1
-    
-    // Используем ease-out функцию (аналогично power2.out в GSAP)
-    const easeOut = 1 - Math.pow(1 - progress, 2)
-    
-    // Интерполяция позиции Y
-    const currentY = this.breakAnimation.startY + 
-      (this.breakAnimation.targetY - this.breakAnimation.startY) * easeOut
-    this.tapeSprite.y = currentY
-    
-    // Интерполяция поворота
-    const currentRotation = this.breakAnimation.startRotation + 
-      (this.breakAnimation.targetRotation - this.breakAnimation.startRotation) * easeOut
-    this.tapeSprite.rotation = currentRotation
-    
-    // Интерполяция прозрачности (от 1 до 0)
-    this.tapeSprite.alpha = 1 - easeOut
-    
-    // Завершение анимации
-    if (progress >= 1) {
-      this.breakAnimation.isAnimating = false
-      this.tapeSprite.visible = false
-    }
+    // Анимация убрана - шахматная доска остается на месте
   }
 
   /**
@@ -6125,7 +6443,10 @@ class FinishLine {
       this.container = null
     }
     this.sprite = null
-    this.tapeSprite = null
+    this.tapeSprite = null // Больше не используется
+    this.cornerSprite = null
+    this.cornerSpriteCopy = null
+    this.yellowTape = null
   }
 }
 
@@ -7395,57 +7716,6 @@ class Footer extends Container {
 }
 
 
-// === utils/Collision.js ===
-/**
- * Утилиты для коллизий
- * Основано на анализе из ../анализ/10_physics_collisions.md
- */
-
-/**
- * Проверяет пересечение двух прямоугольников (AABB)
- * @param {Object} rect1 - Первый прямоугольник {x, y, width, height}
- * @param {Object} rect2 - Второй прямоугольник {x, y, width, height}
- * @returns {boolean} true если прямоугольники пересекаются
- */
-function rectanglesIntersect(rect1, rect2) {
-  return (
-    rect1.x < rect2.x + rect2.width &&
-    rect1.x + rect1.width > rect2.x &&
-    rect1.y < rect2.y + rect2.height &&
-    rect1.y + rect1.height > rect2.y
-  )
-}
-
-/**
- * Получает хитбокс спрайта
- * @param {PIXI.Sprite} sprite - Спрайт PixiJS
- * @returns {Object} Хитбокс {x, y, width, height}
- */
-function getHitbox(sprite) {
-  const anchorX = sprite.anchor?.x || 0.5
-  const anchorY = sprite.anchor?.y || 0.5
-  
-  return {
-    x: sprite.x - sprite.width * anchorX,
-    y: sprite.y - sprite.height * anchorY,
-    width: sprite.width,
-    height: sprite.height
-  }
-}
-
-/**
- * Проверяет коллизию между двумя спрайтами
- * @param {PIXI.Sprite} sprite1 - Первый спрайт
- * @param {PIXI.Sprite} sprite2 - Второй спрайт
- * @returns {boolean} true если спрайты пересекаются
- */
-function spritesIntersect(sprite1, sprite2) {
-  const rect1 = getHitbox(sprite1)
-  const rect2 = getHitbox(sprite2)
-  return rectanglesIntersect(rect1, rect2)
-}
-
-
 // === core/spawnData.js ===
 /**
  * Данные спавна всех сущностей из референса (массив Gl)
@@ -8014,6 +8284,57 @@ class AudioManager {
       }
     })
   }
+}
+
+
+// === utils/Collision.js ===
+/**
+ * Утилиты для коллизий
+ * Основано на анализе из ../анализ/10_physics_collisions.md
+ */
+
+/**
+ * Проверяет пересечение двух прямоугольников (AABB)
+ * @param {Object} rect1 - Первый прямоугольник {x, y, width, height}
+ * @param {Object} rect2 - Второй прямоугольник {x, y, width, height}
+ * @returns {boolean} true если прямоугольники пересекаются
+ */
+function rectanglesIntersect(rect1, rect2) {
+  return (
+    rect1.x < rect2.x + rect2.width &&
+    rect1.x + rect1.width > rect2.x &&
+    rect1.y < rect2.y + rect2.height &&
+    rect1.y + rect1.height > rect2.y
+  )
+}
+
+/**
+ * Получает хитбокс спрайта
+ * @param {PIXI.Sprite} sprite - Спрайт PixiJS
+ * @returns {Object} Хитбокс {x, y, width, height}
+ */
+function getHitbox(sprite) {
+  const anchorX = sprite.anchor?.x || 0.5
+  const anchorY = sprite.anchor?.y || 0.5
+  
+  return {
+    x: sprite.x - sprite.width * anchorX,
+    y: sprite.y - sprite.height * anchorY,
+    width: sprite.width,
+    height: sprite.height
+  }
+}
+
+/**
+ * Проверяет коллизию между двумя спрайтами
+ * @param {PIXI.Sprite} sprite1 - Первый спрайт
+ * @param {PIXI.Sprite} sprite2 - Второй спрайт
+ * @returns {boolean} true если спрайты пересекаются
+ */
+function spritesIntersect(sprite1, sprite2) {
+  const rect1 = getHitbox(sprite1)
+  const rect2 = getHitbox(sprite2)
+  return rectanglesIntersect(rect1, rect2)
 }
 
 
