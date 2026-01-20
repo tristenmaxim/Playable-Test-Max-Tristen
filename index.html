@@ -3,12 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <meta http-equiv="Last-Modified" content="Mon, 20 Jan 2026 14:50:00 GMT">
   <title>Runner Game</title>
-  <!-- Build version: 1768921000000 -->
+  <!-- Build version: 1768915074723 -->
   
   <!-- GSAP CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
@@ -92,9 +91,9 @@
   <!-- Canvas будет добавлен через JavaScript -->
   
   <script type="module">
-// Build version: 1768921000000
+// Build version: 1768915074723
 // Force cache refresh
-console.log('🎮 Game version:', 1768921000000)
+console.log('🎮 Game version:', 1768915074723)
 import { Application, Container, Text, TextStyle, Sprite, Graphics, Rectangle, Assets, Texture, AnimatedSprite, Spritesheet, Point, RenderTexture, MeshRope } from 'pixi.js'
 
 
@@ -6228,17 +6227,17 @@ class FinishLine {
     let startX, startY, endX, endY
     
     if (side === "left") {
-      // Левая веревка: от точки разрыва к левой стойке
-      startX = breakX
-      startY = breakY
-      endX = this.leftPostTopX + FINISH_ROPE_CONSTANTS.LEFT_ROPE_OFFSET_X
-      endY = this.leftPostTopY + FINISH_ROPE_CONSTANTS.LEFT_ROPE_OFFSET_Y
+      // Левая веревка: от левой стойки (закреплена) к точке разрыва (падает)
+      startX = this.leftPostTopX + FINISH_ROPE_CONSTANTS.LEFT_ROPE_OFFSET_X
+      startY = this.leftPostTopY + FINISH_ROPE_CONSTANTS.LEFT_ROPE_OFFSET_Y
+      endX = breakX
+      endY = breakY
     } else {
-      // Правая веревка: от точки разрыва к правой стойке
-      startX = breakX
-      startY = breakY
-      endX = this.rightPostTopX + FINISH_ROPE_CONSTANTS.RIGHT_ROPE_OFFSET_X
-      endY = this.rightPostTopY + FINISH_ROPE_CONSTANTS.RIGHT_ROPE_OFFSET_Y
+      // Правая веревка: от правой стойки (закреплена) к точке разрыва (падает)
+      startX = this.rightPostTopX + FINISH_ROPE_CONSTANTS.RIGHT_ROPE_OFFSET_X
+      startY = this.rightPostTopY + FINISH_ROPE_CONSTANTS.RIGHT_ROPE_OFFSET_Y
+      endX = breakX
+      endY = breakY
     }
     
     // Вычисляем расстояние между точками
@@ -6275,16 +6274,21 @@ class FinishLine {
     const gravity = FINISH_ROPE_CONSTANTS.GRAVITY * decay
     const waveAmplitude = decay
     
+    // Первая точка (на стойке) закреплена - не анимируем
+    // Анимируем все точки кроме первой (от стойки к точке разрыва)
     for (let i = 1; i < points.length; i++) {
       const point = points[i]
       const velocity = velocities[i]
       
-      // Применяем гравитацию
-      velocity.y += gravity
+      // Чем ближе к концу (точке разрыва), тем сильнее эффект
+      const distanceFactor = i / (points.length - 1)
+      
+      // Применяем гравитацию (сильнее к концу)
+      velocity.y += gravity * (0.5 + distanceFactor * 0.5)
       
       // Добавляем волновое движение
       const wave = Math.sin(this.animationTime + i * FINISH_ROPE_CONSTANTS.WAVE_SPEED) * 2 * waveAmplitude
-      velocity.x += wave * 0.1
+      velocity.x += wave * 0.1 * distanceFactor
       
       // Применяем затухание
       velocity.x *= FINISH_ROPE_CONSTANTS.DAMPING
@@ -6295,6 +6299,7 @@ class FinishLine {
       point.y += velocity.y
       
       // Регулируем расстояние между соседними точками (constraint)
+      // Первая точка закреплена, остальные подстраиваются
       if (i > 0) {
         const prevPoint = points[i - 1]
         const dx = point.x - prevPoint.x
@@ -6306,6 +6311,7 @@ class FinishLine {
           const correction = (distance - targetDistance) / distance
           const correctionX = dx * correction * 0.5
           const correctionY = dy * correction * 0.5
+          // Корректируем только текущую точку (предыдущая закреплена)
           point.x -= correctionX
           point.y -= correctionY
         }
