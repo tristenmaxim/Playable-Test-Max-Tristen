@@ -353,12 +353,19 @@ function extractEntryJS() {
  * Создание финального HTML
  */
 function createHTML(jsCode, cssCode) {
+  // Генерируем версию на основе текущего времени
+  const version = Date.now()
+  
   return `<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Runner Game</title>
+  <!-- Build version: ${version} -->
   
   <!-- GSAP CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
@@ -388,6 +395,9 @@ ${cssCode}
   <!-- Canvas будет добавлен через JavaScript -->
   
   <script type="module">
+// Build version: ${version}
+// Force cache refresh
+console.log('🎮 Game version:', ${version})
 ${jsCode}
   </script>
 </body>
