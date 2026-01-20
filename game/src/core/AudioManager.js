@@ -72,42 +72,21 @@ export class AudioManager {
       console.log('📍 Текущий путь:', window.location.pathname)
       console.log('📍 Текущий URL:', window.location.href)
 
-      // Базовый путь к аудио файлам
-      // Определяем путь в зависимости от структуры URL
-      let audioBasePath
-      if (window.location.pathname.includes('/game/')) {
-        // Если открыто через /game/index.html
-        audioBasePath = '../reference/reference_assets/data_uri_assets/'
-      } else if (window.location.pathname.startsWith('/game')) {
-        // Если открыто через /game (без index.html)
-        audioBasePath = '../reference/reference_assets/data_uri_assets/'
-      } else {
-        // Абсолютный путь от корня сервера
-        audioBasePath = '/reference/reference_assets/data_uri_assets/'
-      }
+      // Используем прямые пути к файлам, которые будут заменены на Data URI скриптом сборки
+      // Скрипт сборки заменит эти пути на встроенные Data URI для работы на GitHub Pages
+      const audioJumpPath = '../reference/reference_assets/data_uri_assets/asset_0030.mp3'
+      const audioHitPath = '../reference/reference_assets/data_uri_assets/asset_0032.mp3'
+      const audioCollectPath = '../reference/reference_assets/data_uri_assets/asset_0033.mp3'
+      const audioFinishPath = '../reference/reference_assets/data_uri_assets/asset_0035.mp3'
+      const audioBGMPath = '../reference/reference_assets/data_uri_assets/asset_0037.mp3'
       
-      console.log('📁 Базовый путь к аудио:', audioBasePath)
-      
-      // Тестируем доступность файла
-      const testUrl = audioBasePath + 'asset_0030.mp3'
-      console.log('🧪 Тестируем доступность:', testUrl)
-      fetch(testUrl, { method: 'HEAD' })
-        .then(response => {
-          if (response.ok) {
-            console.log('✅ Аудио файлы доступны по пути:', audioBasePath)
-          } else {
-            console.warn('⚠️ Аудио файлы недоступны по пути:', audioBasePath, 'статус:', response.status)
-          }
-        })
-        .catch(error => {
-          console.error('❌ Ошибка проверки доступности аудио файлов:', error)
-        })
+      console.log('📁 Пути к аудио файлам (будут заменены на Data URI при сборке)')
       
       // Загружаем звуковые эффекты с обработкой ошибок
       // Важно: для звуков, которые могут воспроизводиться несколько раз подряд,
       // нужно разрешить множественное воспроизведение
       this.sounds.jump = new Howl({
-        src: [audioBasePath + 'asset_0030.mp3'],
+        src: [audioJumpPath],
         volume: this.soundVolume,
         preload: true,
         html5: false, // Используем Web Audio API для лучшей производительности
@@ -123,7 +102,7 @@ export class AudioManager {
       })
       
       this.sounds.hit = new Howl({
-        src: [audioBasePath + 'asset_0032.mp3'],
+        src: [audioHitPath],
         volume: this.soundVolume,
         preload: true,
         html5: false,
@@ -133,7 +112,7 @@ export class AudioManager {
       })
       
       this.sounds.collect = new Howl({
-        src: [audioBasePath + 'asset_0033.mp3'],
+        src: [audioCollectPath],
         volume: this.soundVolume,
         preload: true,
         html5: false,
@@ -143,7 +122,7 @@ export class AudioManager {
       })
       
       this.sounds.finish = new Howl({
-        src: [audioBasePath + 'asset_0035.mp3'],
+        src: [audioFinishPath],
         volume: this.soundVolume,
         preload: true,
         onload: () => console.log('✅ Звук финала загружен'),
@@ -153,7 +132,7 @@ export class AudioManager {
       
       // Фоновая музыка (зациклена)
       this.sounds.bgm = new Howl({
-        src: [audioBasePath + 'asset_0037.mp3'],
+        src: [audioBGMPath],
         volume: this.musicVolume,
         loop: true,
         preload: true,
