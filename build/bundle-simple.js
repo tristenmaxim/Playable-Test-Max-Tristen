@@ -80,7 +80,8 @@ function convertAssets() {
         const paths = [
           `../reference/reference_assets/data_uri_assets/${file}`,
           `../../reference/reference_assets/data_uri_assets/${file}`,
-          `reference/reference_assets/data_uri_assets/${file}`
+          `reference/reference_assets/data_uri_assets/${file}`,
+          `/reference/reference_assets/data_uri_assets/${file}` // Абсолютный путь для GitHub Pages
         ]
         
         paths.forEach(p => assetMap.set(p, dataURI))
@@ -102,7 +103,9 @@ function replaceAssetPaths(content) {
     const escapedPath = assetPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     const patterns = [
       new RegExp(`['"]${escapedPath}['"]`, 'g'),
-      new RegExp(`url\\(['"]?${escapedPath}['"]?\\)`, 'g')
+      new RegExp(`url\\(['"]?${escapedPath}['"]?\\)`, 'g'),
+      // Также обрабатываем пути без кавычек в url()
+      new RegExp(`url\\(${escapedPath}\\)`, 'g')
     ]
     
     patterns.forEach(pattern => {
