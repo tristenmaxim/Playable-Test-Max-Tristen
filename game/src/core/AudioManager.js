@@ -85,11 +85,12 @@ export class AudioManager {
       // Загружаем звуковые эффекты с обработкой ошибок
       // Важно: для звуков, которые могут воспроизводиться несколько раз подряд,
       // нужно разрешить множественное воспроизведение
+      // Для Data URI используем html5: true, так как Web Audio API может не работать с Data URI
       this.sounds.jump = new Howl({
         src: [audioJumpPath],
         volume: this.soundVolume,
         preload: true,
-        html5: false, // Используем Web Audio API для лучшей производительности
+        html5: true, // Используем HTML5 Audio для Data URI (Web Audio API может не работать с Data URI)
         loop: false, // Не зацикливаем звук
         onload: () => console.log('✅ Звук прыжка загружен'),
         onloaderror: (id, error) => console.error('❌ Ошибка загрузки звука прыжка:', error),
@@ -105,7 +106,7 @@ export class AudioManager {
         src: [audioHitPath],
         volume: this.soundVolume,
         preload: true,
-        html5: false,
+        html5: true, // Используем HTML5 Audio для Data URI
         onload: () => console.log('✅ Звук столкновения загружен'),
         onloaderror: (id, error) => console.error('❌ Ошибка загрузки звука столкновения:', error),
         onplayerror: (id, error) => console.error('❌ Ошибка воспроизведения звука столкновения:', error)
@@ -115,7 +116,7 @@ export class AudioManager {
         src: [audioCollectPath],
         volume: this.soundVolume,
         preload: true,
-        html5: false,
+        html5: true, // Используем HTML5 Audio для Data URI
         onload: () => console.log('✅ Звук сбора загружен'),
         onloaderror: (id, error) => console.error('❌ Ошибка загрузки звука сбора:', error),
         onplayerror: (id, error) => console.error('❌ Ошибка воспроизведения звука сбора:', error)
@@ -125,6 +126,7 @@ export class AudioManager {
         src: [audioFinishPath],
         volume: this.soundVolume,
         preload: true,
+        html5: true, // Используем HTML5 Audio для Data URI
         onload: () => console.log('✅ Звук финала загружен'),
         onloaderror: (id, error) => console.error('❌ Ошибка загрузки звука финала:', error),
         onplayerror: (id, error) => console.error('❌ Ошибка воспроизведения звука финала:', error)
