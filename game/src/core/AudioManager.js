@@ -34,25 +34,37 @@ export class AudioManager {
    * Настройка разблокировки аудио при первом взаимодействии
    */
   setupAudioUnlock() {
-    const unlockAudio = () => {
+    const unlockAudio = async () => {
       if (this.audioUnlocked) return
       
-      if (typeof Howler !== 'undefined' && Howler.ctx) {
-        // Разблокируем аудио контекст
-        Howler.ctx.resume().then(() => {
+      try {
+        // Разблокируем аудио контекст Howler
+        if (typeof Howler !== 'undefined' && Howler.ctx) {
+          await Howler.ctx.resume()
           this.audioUnlocked = true
           console.log('🔓 Аудио разблокировано пользователем')
-        }).catch(err => {
-          console.warn('⚠️ Не удалось разблокировать аудио:', err)
-        })
+          
+          // Также пробуем разблокировать через Howler.unlockAudio() если доступно
+          if (typeof Howler.unlockAudio === 'function') {
+            Howler.unlockAudio()
+            console.log('🔓 Howler.unlockAudio() вызван')
+          }
+        }
+      } catch (err) {
+        console.warn('⚠️ Не удалось разблокировать аудио:', err)
       }
     }
     
     // Слушаем события взаимодействия
-    const events = ['click', 'touchstart', 'keydown']
+    const events = ['click', 'touchstart', 'keydown', 'touchend']
     events.forEach(event => {
-      document.addEventListener(event, unlockAudio, { once: true })
+      document.addEventListener(event, unlockAudio, { once: true, passive: true })
     })
+    
+    // Также пробуем разблокировать сразу, если Howler уже загружен
+    if (typeof Howler !== 'undefined') {
+      unlockAudio()
+    }
   }
 
   /**
@@ -74,6 +86,7 @@ export class AudioManager {
 
       // Используем прямые пути к файлам, которые будут заменены на Data URI скриптом сборки
       // Скрипт сборки заменит эти пути на встроенные Data URI для работы на GitHub Pages
+      // ВАЖНО: После замены на Data URI, эти переменные будут содержать строки вида 'data:audio/mpeg;base64,...'
       const audioJumpPath = '../reference/reference_assets/data_uri_assets/asset_0030.mp3'
       const audioHitPath = '../reference/reference_assets/data_uri_assets/asset_0032.mp3'
       const audioCollectPath = '../reference/reference_assets/data_uri_assets/asset_0033.mp3'
@@ -81,6 +94,13 @@ export class AudioManager {
       const audioBGMPath = '../reference/reference_assets/data_uri_assets/asset_0037.mp3'
       
       console.log('📁 Пути к аудио файлам (будут заменены на Data URI при сборке)')
+      console.log('📁 Проверка путей:', {
+        jump: audioJumpPath.substring(0, 50),
+        hit: audioHitPath.substring(0, 50),
+        collect: audioCollectPath.substring(0, 50),
+        finish: audioFinishPath.substring(0, 50),
+        bgm: audioBGMPath.substring(0, 50)
+      })
       
       // Загружаем звуковые эффекты с обработкой ошибок
       // Важно: для звуков, которые могут воспроизводиться несколько раз подряд,
