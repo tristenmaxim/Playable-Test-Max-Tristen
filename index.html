@@ -5541,15 +5541,16 @@ class Obstacle {
 
 // Константы для веревки финиша (из оригинала)
 const FINISH_ROPE_CONSTANTS = {
-  ROPE_SEGMENTS: 10,
+  ROPE_SEGMENTS: 7, // Количество сегментов для веревок
   ROPE_LENGTH_FACTOR: 0.3,
+  ROPE_BREAK_LENGTH_FACTOR: 0.05, // Длина веревки после разрыва (5% от расстояния до точки разрыва - короткие обрывки)
   GRAVITY: 0.3,
   DAMPING: 0.95,
   WAVE_SPEED: 0.01,
   TIME_DECAY: 0.15,
   MIN_VELOCITY_THRESHOLD: 0.1,
   MIN_ANIMATION_TIME: 1,
-  ROPE_SEGMENT_DISTANCE: 10,
+  ROPE_SEGMENT_DISTANCE: 6, // Расстояние между сегментами веревки
   LEFT_ROPE_OFFSET_X: 0,
   LEFT_ROPE_OFFSET_Y: 0,
   RIGHT_ROPE_OFFSET_X: 20,
@@ -6240,14 +6241,26 @@ class FinishLine {
       endY = breakY
     }
     
-    // Вычисляем расстояние между точками
-    const distance = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2))
+    // Вычисляем расстояние между стойкой и точкой разрыва
+    const fullDistance = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2))
     
-    // Создаем точки веревки от начала к концу
+    // Укорачиваем веревку - используем только часть длины
+    const ropeLength = fullDistance * FINISH_ROPE_CONSTANTS.ROPE_BREAK_LENGTH_FACTOR
+    
+    // Вычисляем конечную точку укороченной веревки
+    const dx = endX - startX
+    const dy = endY - startY
+    const normalizedDx = dx / fullDistance
+    const normalizedDy = dy / fullDistance
+    
+    const shortenedEndX = startX + normalizedDx * ropeLength
+    const shortenedEndY = startY + normalizedDy * ropeLength
+    
+    // Создаем точки веревки от стойки к укороченной конечной точке
     for (let i = 0; i < FINISH_ROPE_CONSTANTS.ROPE_SEGMENTS; i++) {
       const t = i / (FINISH_ROPE_CONSTANTS.ROPE_SEGMENTS - 1)
-      const x = startX + (endX - startX) * t
-      const y = startY + (endY - startY) * t
+      const x = startX + (shortenedEndX - startX) * t
+      const y = startY + (shortenedEndY - startY) * t
       pointsArray.push(new Point(x, y))
     }
     
